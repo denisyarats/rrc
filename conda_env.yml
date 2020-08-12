@@ -4,7 +4,7 @@ channels:
 dependencies:
   - python=3.6.9
   - numpy==1.19.1
-    #- pinocchio==2.4.7
+  - pinocchio==2.4.7
   - pip==20.1.1
   - pytorch
   - cudatoolkit=10.2
