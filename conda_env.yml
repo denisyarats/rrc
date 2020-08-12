@@ -3,6 +3,7 @@ channels:
   - pytorch
   - conda-forge
   - defaults
+  - conda-forge
 dependencies:
   - assimp=5.0.1=hac5445f_2
   - attrs=19.3.0=py_0
@@ -119,5 +120,3 @@ dependencies:
   - zlib=1.2.11=h7b6447c_3
   - pytorch=1.5.0=py3.7_cuda9.2.148_cudnn7.6.3_0
   - torchvision=0.6.0=py37_cu92
-prefix: /private/home/denisy/.conda/envs/rrc_env
-
