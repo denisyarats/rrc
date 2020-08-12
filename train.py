@@ -154,7 +154,7 @@ class Workspace(object):
             self.step += 1
 
 
-@hydra.main(config_name='config')
+@hydra.main(config_path='config.yaml')
 def main(cfg):
     workspace = Workspace(cfg)
     workspace.run()

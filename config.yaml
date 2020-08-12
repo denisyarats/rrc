@@ -1,5 +1,3 @@
-
-
 # env
 env: real_robot_challenge_phase_1
 action_type: position # torque or both
@@ -36,7 +34,7 @@ random_nstep: false
 
 agent:
   name: ddpg
-  target: ddpg.DDPGAgent
+  class: ddpg.DDPGAgent
   params:
     obs_shape: ??? # to be specified later
     action_shape: ??? # to be specified later
@@ -53,18 +51,18 @@ agent:
     nstep: ${nstep}
     use_ln: true
     head_init_coef: 1.0
-    
+
 critic:
-  target: ddpg.Critic
+  class: ddpg.Critic
   params:
     obs_shape: ${agent.params.obs_shape}
     action_shape: ${agent.params.action_shape}
     hidden_dim: ${hidden_dim}
     hidden_depth: ${hidden_depth}
     use_ln: ${agent.params.use_ln}
-    
+
 actor:
-  target: ddpg.Actor
+  class: ddpg.Actor
   params:
     obs_shape: ${agent.params.obs_shape}
     action_shape: ${agent.params.action_shape}
@@ -80,27 +78,19 @@ experiment: bench
 
 # hydra configuration
 hydra:
+  name: ${env}
   run:
     dir: ./exp_local/${now:%Y.%m.%d}/${now:%H%M%S}_${hydra.job.override_dirname}
-    #dir: ./exp_local/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}
   sweep:
-    dir: ./exp/${now:%Y.%m.%d}/${now:%H%M%S}_${experiment}
+    dir: ./exp/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}_${experiment}
     subdir: ${hydra.job.num}
-
-# @package hydra.launcher
-cls: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmSubmititLauncher
-params:
-  submitit_folder: ${hydra.sweep.dir}/.submitit/%j
-  timeout_min: 4319
-  cpus_per_task: 20
-  gpus_per_node: 1
-  tasks_per_node: 1
-  mem_gb: 64
-  nodes: 1
-  name: ${hydra.job.name}
-  partition: learnfair
-  comment: null
-  constraint: null
-  exclude: null
-  signal_delay_s: 120
-  max_num_timeout: 0
+  launcher:
+    params:
+      queue_parameters:
+        slurm:
+          max_num_timeout: 100000
+          time: 4319
+          partition: learnfair
+          #partition: priority
+          #comment: neurips_abstract_deadline_may_27
+    mem_limit: 64
