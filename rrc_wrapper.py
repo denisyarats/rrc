@@ -88,19 +88,23 @@ def make(env_name, action_type, action_repeat, initializer, seed):
     else:
         action_type == cube_env.ActionType.TORQUE_AND_POSITION
 
-    # env = gym.make(
-    #     f'rrc_simulation.gym_wrapper:{env_name}-v1',
-    #     initializer=initializer,
-    #     action_type=action_type,
-    #     frameskip=action_repeat,
-    #     visualization=False,
-    # )
-    env = ReachEnv(
-        initializer=initializer,
-        action_type=action_type,
-        frameskip=action_repeat,
-        visualization=False,
-    )
+    if env_name == 'rrc_reacher':
+        env = ReachEnv(
+            initializer=initializer,
+            action_type=action_type,
+            frameskip=action_repeat,
+            visualization=False,
+            task='all_fingers'
+        )
+    else:
+        env = gym.make(
+            f'rrc_simulation.gym_wrapper:{env_name}-v1',
+            initializer=initializer,
+            action_type=action_type,
+            frameskip=action_repeat,
+            visualization=False,
+        )
+
     env.seed(seed)
 
     env = FlattenObservationWrapper(env)

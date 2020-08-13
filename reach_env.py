@@ -22,6 +22,7 @@ class ReachEnv(gym.GoalEnv):
         action_type=ActionType.POSITION,
         frameskip=1,
         visualization=False,
+        task='all_fingers'
     ):
         """Initialize.
         Args:
@@ -41,6 +42,8 @@ class ReachEnv(gym.GoalEnv):
         self.initializer = initializer
         self.action_type = action_type
         self.visualization = visualization
+
+        self.task = task
 
         # TODO: The name "frameskip" makes sense for an atari environment but
         # not really for our scenario.  The name is also misleading as
@@ -93,27 +96,13 @@ class ReachEnv(gym.GoalEnv):
                         "position": spaces.object_position.gym,
                     }
                 ),
-                #"achieved_goal": object_state_space,
             }
         )
 
     def compute_reward(self):
-        """Compute the reward for the given achieved and desired goal.
-        Args:
-            achieved_goal (dict): Current pose of the object.
-            desired_goal (dict): Goal pose of the object.
-            info (dict): An info dictionary containing a field "difficulty"
-                which specifies the difficulty level.
+        """Compute the reward .
         Returns:
-            float: The reward that corresponds to the provided achieved goal
-            w.r.t. to the desired goal. Note that the following should always
-            hold true::
-                ob, reward, done, info = env.step()
-                assert reward == env.compute_reward(
-                    ob['achieved_goal'],
-                    ob['desired_goal'],
-                    info,
-                )
+            float: The reward
         """
 
         goal_pos = self.goal['position']
@@ -122,18 +111,20 @@ class ReachEnv(gym.GoalEnv):
         finger_tip_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         reward = 0.0
-        for tip_id in finger_tip_ids:
-            tip_pos = pybullet.getLinkState(finger_id,tip_id)[0]
+
+        if self.task == 'all_fingers':
+            for tip_id in finger_tip_ids:
+                tip_pos = pybullet.getLinkState(finger_id,tip_id)[0]
+                reward -= np.linalg.norm(goal_pos - tip_pos)
+            reward = np.exp(reward)
+
+        if self.task == 'one_finger':
+            tip_pos = pybullet.getLinkState(finger_id,finger_tip_ids[0])[0]
             reward -= np.linalg.norm(goal_pos - tip_pos)
+            reward = np.exp(reward)
 
-        return np.exp(reward)
+        return reward
 
-
-        # return -move_cube.evaluate_state(
-        #     move_cube.Pose.from_dict(desired_goal),
-        #     move_cube.Pose.from_dict(achieved_goal),
-        #     info["difficulty"],
-        # )
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.
@@ -183,11 +174,6 @@ class ReachEnv(gym.GoalEnv):
             # will not be possible
             observation = self._create_observation(t + 1)
 
-            # reward += self.compute_reward(
-            #     observation["achieved_goal"],
-            #     observation["desired_goal"],
-            #     self.info,
-            # )
             reward += self.compute_reward()
 
         is_done = self.step_count == move_cube.episode_length
@@ -254,10 +240,6 @@ class ReachEnv(gym.GoalEnv):
                 "torque": robot_observation.torque,
             },
             "desired_goal": self.goal,
-            # "achieved_goal": {
-            #     "position": object_observation.position,
-            #     "orientation": object_observation.orientation,
-            # },
         }
         return observation
 
