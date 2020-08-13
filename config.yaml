@@ -12,7 +12,7 @@ num_train_iters: 1
 replay_buffer_capacity: ${num_train_steps}
 seed: 1
 # eval
-eval_frequency: 50000
+eval_frequency: 10000
 num_eval_episodes: 10
 # misc
 log_frequency_step: 10000
