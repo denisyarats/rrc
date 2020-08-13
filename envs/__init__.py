@@ -4,7 +4,6 @@ import gym
 from envs import initializers, wrappers
 from rrc_simulation.gym_wrapper.envs import cube_env
 
-
 ActionType = cube_env.ActionType
 
 
@@ -16,23 +15,23 @@ def make_initializer(difficulty, fixed):
     return initializer
 
 
-def make(env_name, action_type, action_repeat, initializer, seed):
+def make(env_name, action_type, action_repeat, episode_length, initializer,
+         seed):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
         action_type = ActionType.POSITION
     elif action_type == 'torque':
-        action_type == ActionType.TORQUE
+        action_type = ActionType.TORQUE
     else:
-        action_type == ActionType.TORQUE_AND_POSITION
+        action_type = ActionType.TORQUE_AND_POSITION
 
-    env = gym.make(
-        f'{env_name}-v1',
-        initializer=initializer,
-        action_type=action_type,
-        frameskip=action_repeat,
-        visualization=False,
-    )
+    env = gym.make(f'{env_name}-v1',
+                   initializer=initializer,
+                   action_type=action_type,
+                   frameskip=action_repeat,
+                   visualization=False,
+                   episode_length=episode_length)
 
     env.seed(seed)
 
@@ -44,7 +43,6 @@ def make(env_name, action_type, action_repeat, initializer, seed):
     assert np.all(action_space.high <= +1.0)
 
     return env
-
 
 
 from gym.envs.registration import register

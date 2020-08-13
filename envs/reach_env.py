@@ -22,6 +22,7 @@ class ReachEnv(gym.GoalEnv):
         action_type=ActionType.POSITION,
         frameskip=1,
         visualization=False,
+        episode_length=move_cube.episode_length,
         task='all_fingers'
     ):
         """Initialize.
@@ -42,6 +43,7 @@ class ReachEnv(gym.GoalEnv):
         self.initializer = initializer
         self.action_type = action_type
         self.visualization = visualization
+        self.episode_length = episode_length
 
         self.task = task
 
@@ -155,14 +157,14 @@ class ReachEnv(gym.GoalEnv):
 
         # ensure episode length is not exceeded due to frameskip
         step_count_after = self.step_count + num_steps
-        if step_count_after > move_cube.episode_length:
-            excess = step_count_after - move_cube.episode_length
+        if step_count_after > self.episode_length:
+            excess = step_count_after - self.episode_length
             num_steps = max(1, num_steps - excess)
 
         reward = 0.0
         for _ in range(num_steps):
             self.step_count += 1
-            if self.step_count > move_cube.episode_length:
+            if self.step_count > self.episode_length:
                 raise RuntimeError("Exceeded number of steps for one episode.")
 
             # send action to robot
@@ -176,7 +178,7 @@ class ReachEnv(gym.GoalEnv):
 
             reward += self.compute_reward()
 
-        is_done = self.step_count == move_cube.episode_length
+        is_done = self.step_count == self.episode_length
 
         return observation, reward, is_done, self.info
 

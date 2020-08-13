@@ -37,14 +37,13 @@ class Workspace(object):
 
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
-        
+
         initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
-        self.env = envs.make(cfg.env, cfg.action_type,
-                                    cfg.action_repeat, initializer,
-                                    cfg.seed)
-        self.eval_env = envs.make(cfg.env, cfg.action_type,
-                                         cfg.action_repeat, initializer,
-                                         cfg.seed + 1)
+        self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
+                             cfg.episode_length, initializer, cfg.seed)
+        self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
+                                  cfg.episode_length, initializer,
+                                  cfg.seed + 1)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -121,11 +120,13 @@ class Workspace(object):
                 self.logger.log('train/episode', episode, self.step)
 
             # evaluate agent periodically
-            if self.step % (self.cfg.eval_frequency // self.cfg.action_repeat) == 0:
+            if self.step % (self.cfg.eval_frequency //
+                            self.cfg.action_repeat) == 0:
                 self.logger.log('eval/episode', episode, self.step)
                 self.evaluate()
 
-            if self.step % (self.cfg.save_frequency// self.cfg.action_repeat) == 0:
+            if self.step % (self.cfg.save_frequency //
+                            self.cfg.action_repeat) == 0:
                 self.agent.save(self.model_dir, self.step)
 
             # sample action for data collection

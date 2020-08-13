@@ -4,6 +4,7 @@ action_type: position # torque or both
 action_repeat: 1
 difficulty: 1
 fixed_env: true
+episode_length: 1000
 # train
 num_train_steps: 1000000
 num_seed_steps: 1000
