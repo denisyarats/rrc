@@ -126,7 +126,7 @@ class ReachEnv(gym.GoalEnv):
             tip_pos = pybullet.getLinkState(finger_id,tip_id)[0]
             reward -= np.linalg.norm(goal_pos - tip_pos)
 
-        return reward
+        return np.exp(reward)
 
 
         # return -move_cube.evaluate_state(
