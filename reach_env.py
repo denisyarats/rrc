@@ -88,8 +88,12 @@ class ReachEnv(gym.GoalEnv):
                         "torque": spaces.robot_torque.gym,
                     }
                 ),
-                "desired_goal": object_state_space,
-                "achieved_goal": object_state_space,
+                "desired_goal": gym.spaces.Dict(
+                    {
+                        "position": spaces.object_position.gym,
+                    }
+                ),
+                #"achieved_goal": object_state_space,
             }
         )
 
@@ -206,8 +210,8 @@ class ReachEnv(gym.GoalEnv):
         )
 
         self.goal = {
-            "position": goal_object_pose.position,
-            "orientation": goal_object_pose.orientation,
+            "position": initial_object_pose.position,
+            #"orientation": goal_object_pose.orientation,
         }
 
         # visualize the goal
@@ -250,10 +254,10 @@ class ReachEnv(gym.GoalEnv):
                 "torque": robot_observation.torque,
             },
             "desired_goal": self.goal,
-            "achieved_goal": {
-                "position": object_observation.position,
-                "orientation": object_observation.orientation,
-            },
+            # "achieved_goal": {
+            #     "position": object_observation.position,
+            #     "orientation": object_observation.orientation,
+            # },
         }
         return observation
 
