@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-import rrc_wrapper
+import envs
 import hydra
 import torch
 import utils
@@ -38,11 +38,11 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
         
-        initializer = rrc_wrapper.make_initializer(cfg.difficulty, cfg.fixed_env)
-        self.env = rrc_wrapper.make(cfg.env, cfg.action_type,
+        initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
+        self.env = envs.make(cfg.env, cfg.action_type,
                                     cfg.action_repeat, initializer,
                                     cfg.seed)
-        self.eval_env = rrc_wrapper.make(cfg.env, cfg.action_type,
+        self.eval_env = envs.make(cfg.env, cfg.action_type,
                                          cfg.action_repeat, initializer,
                                          cfg.seed + 1)
 

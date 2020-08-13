@@ -1,5 +1,5 @@
 # env
-env: real_robot_challenge_phase_1
+env: cube
 action_type: position # torque or both
 action_repeat: 1
 difficulty: 1

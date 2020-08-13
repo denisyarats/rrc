@@ -4,16 +4,14 @@ import enum
 import numpy as np
 import gym
 
-import pybullet
-
 from rrc_simulation import TriFingerPlatform
 from rrc_simulation import visual_objects
 from rrc_simulation.tasks import move_cube
 
-from rrc_simulation.gym_wrapper.envs.cube_env import ActionType, RandomInitializer, FixedInitializer
+from envs import ActionType
 
 
-class ReachEnv(gym.GoalEnv):
+class CubeEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
 
     def __init__(
@@ -22,9 +20,9 @@ class ReachEnv(gym.GoalEnv):
         action_type=ActionType.POSITION,
         frameskip=1,
         visualization=False,
-        task='all_fingers'
     ):
         """Initialize.
+
         Args:
             initializer: Initializer class for providing initial cube pose and
                 goal pose.  See :class:`RandomInitializer` and
@@ -42,8 +40,6 @@ class ReachEnv(gym.GoalEnv):
         self.initializer = initializer
         self.action_type = action_type
         self.visualization = visualization
-
-        self.task = task
 
         # TODO: The name "frameskip" makes sense for an atari environment but
         # not really for our scenario.  The name is also misleading as
@@ -91,50 +87,51 @@ class ReachEnv(gym.GoalEnv):
                         "torque": spaces.robot_torque.gym,
                     }
                 ),
-                "desired_goal": gym.spaces.Dict(
-                    {
-                        "position": spaces.object_position.gym,
-                    }
-                ),
+                "desired_goal": object_state_space,
+                "achieved_goal": object_state_space,
             }
         )
 
-    def compute_reward(self):
-        """Compute the reward .
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        """Compute the reward for the given achieved and desired goal.
+
+        Args:
+            achieved_goal (dict): Current pose of the object.
+            desired_goal (dict): Goal pose of the object.
+            info (dict): An info dictionary containing a field "difficulty"
+                which specifies the difficulty level.
+
         Returns:
-            float: The reward
+            float: The reward that corresponds to the provided achieved goal
+            w.r.t. to the desired goal. Note that the following should always
+            hold true::
+
+                ob, reward, done, info = env.step()
+                assert reward == env.compute_reward(
+                    ob['achieved_goal'],
+                    ob['desired_goal'],
+                    info,
+                )
         """
-
-        goal_pos = self.goal['position']
-
-        finger_id = self.platform.simfinger.finger_id
-        finger_tip_ids = self.platform.simfinger.pybullet_tip_link_indices
-
-        reward = 0.0
-
-        if self.task == 'all_fingers':
-            for tip_id in finger_tip_ids:
-                tip_pos = pybullet.getLinkState(finger_id,tip_id)[0]
-                reward -= np.linalg.norm(goal_pos - tip_pos)
-            reward = np.exp(reward)
-
-        if self.task == 'one_finger':
-            tip_pos = pybullet.getLinkState(finger_id,finger_tip_ids[0])[0]
-            reward -= np.linalg.norm(goal_pos - tip_pos)
-            reward = np.exp(reward)
-
-        return reward
-
+        return -move_cube.evaluate_state(
+            move_cube.Pose.from_dict(desired_goal),
+            move_cube.Pose.from_dict(achieved_goal),
+            info["difficulty"],
+        )
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.
+
         When end of episode is reached, you are responsible for calling
         ``reset()`` to reset this environment's state.
+
         Args:
             action: An action provided by the agent (depends on the selected
                 :class:`ActionType`).
+
         Returns:
             tuple:
+
             - observation (dict): agent's observation of the current
               environment.
             - reward (float) : amount of reward returned after previous action.
@@ -174,7 +171,11 @@ class ReachEnv(gym.GoalEnv):
             # will not be possible
             observation = self._create_observation(t + 1)
 
-            reward += self.compute_reward()
+            reward += self.compute_reward(
+                observation["achieved_goal"],
+                observation["desired_goal"],
+                self.info,
+            )
 
         is_done = self.step_count == move_cube.episode_length
 
@@ -183,12 +184,12 @@ class ReachEnv(gym.GoalEnv):
     def reset(self):
         # reset simulation
         del self.platform
-
+        
         # initialize simulation
         initial_robot_position = TriFingerPlatform.spaces.robot_position.default
         initial_object_pose=self.initializer.get_initial_state()
         goal_object_pose = self.initializer.get_goal()
-
+        
         self.platform = TriFingerPlatform(
             visualization=self.visualization,
             initial_robot_position=initial_robot_position,
@@ -196,8 +197,8 @@ class ReachEnv(gym.GoalEnv):
         )
 
         self.goal = {
-            "position": initial_object_pose.position,
-            #"orientation": goal_object_pose.orientation,
+            "position": goal_object_pose.position,
+            "orientation": goal_object_pose.orientation,
         }
 
         # visualize the goal
@@ -216,11 +217,14 @@ class ReachEnv(gym.GoalEnv):
 
     def seed(self, seed=None):
         """Sets the seed for this env’s random number generator.
+
         .. note::
+
            Spaces need to be seeded separately.  E.g. if you want to sample
            actions directly from the action space using
            ``env.action_space.sample()`` you can set a seed there using
            ``env.action_space.seed()``.
+
         Returns:
             List of seeds used by this environment.  This environment only uses
             a single seed, so the list contains only one element.
@@ -240,6 +244,10 @@ class ReachEnv(gym.GoalEnv):
                 "torque": robot_observation.torque,
             },
             "desired_goal": self.goal,
+            "achieved_goal": {
+                "position": object_observation.position,
+                "orientation": object_observation.orientation,
+            },
         }
         return observation
 

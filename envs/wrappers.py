@@ -1,11 +1,6 @@
 import numpy as np
 import gym
 
-from rrc_simulation.gym_wrapper.envs import cube_env
-from rrc_simulation.tasks import move_cube
-
-from reach_env import ReachEnv
-
 
 def flat_space(space, value=None):
     if type(space) == gym.spaces.Box:
@@ -67,51 +62,3 @@ def FlattenActionWrapper(gym.ActionWrapper):
     def action(self, action):
         pass
 """
-
-def make_initializer(difficulty, fixed):
-    if fixed:
-        init = move_cube.sample_goal(-1)
-        goal = move_cube.sample_goal(difficulty)
-        initializer = cube_env.FixedInitializer(difficulty, init, goal)
-    else:
-        initializer = cube_env.RandomInitializer(difficulty=difficulty)
-    return initializer
-
-
-def make(env_name, action_type, action_repeat, initializer, seed):
-    assert action_type in ['position', 'torque', 'both']
-
-    if action_type == 'position':
-        action_type = cube_env.ActionType.POSITION
-    elif action_type == 'torque':
-        action_type == cube_env.ActionType.TORQUE
-    else:
-        action_type == cube_env.ActionType.TORQUE_AND_POSITION
-
-    if env_name == 'rrc_reacher':
-        env = ReachEnv(
-            initializer=initializer,
-            action_type=action_type,
-            frameskip=action_repeat,
-            visualization=False,
-            task='all_fingers'
-        )
-    else:
-        env = gym.make(
-            f'rrc_simulation.gym_wrapper:{env_name}-v1',
-            initializer=initializer,
-            action_type=action_type,
-            frameskip=action_repeat,
-            visualization=False,
-        )
-
-    env.seed(seed)
-
-    env = FlattenObservationWrapper(env)
-    env = ActionScalingWrapper(env, low=-1.0, high=+1.0)
-
-    action_space = env.action_space
-    assert np.all(action_space.low >= -1.0)
-    assert np.all(action_space.high <= +1.0)
-
-    return env
