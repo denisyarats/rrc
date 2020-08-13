@@ -4,6 +4,8 @@ import gym
 from rrc_simulation.gym_wrapper.envs import cube_env
 from rrc_simulation.tasks import move_cube
 
+from reach_env import ReachEnv
+
 
 def flat_space(space, value=None):
     if type(space) == gym.spaces.Box:
@@ -13,7 +15,7 @@ def flat_space(space, value=None):
         for key in space.spaces:
             for x in flat_space(space[key], None if value is None else value[key]):
                 yield x
-                
+
 
 class FlattenObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env):
@@ -44,7 +46,7 @@ class ActionScalingWrapper(gym.ActionWrapper):
         super().__init__(env)
         self.low = low
         self.high = high
-        
+
         self.action_space = gym.spaces.Box(low=low,
                                            high=high,
                                            shape=self.env.action_space.shape,
@@ -56,12 +58,12 @@ class ActionScalingWrapper(gym.ActionWrapper):
         true_scale = self.env.action_space.high - self.env.action_space.low
         action = action * true_scale + self.env.action_space.low
         return action.astype(self.env.action_space.dtype)
-    
+
 """
 def FlattenActionWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
-        
+
     def action(self, action):
         pass
 """
@@ -86,8 +88,14 @@ def make(env_name, action_type, action_repeat, initializer, seed):
     else:
         action_type == cube_env.ActionType.TORQUE_AND_POSITION
 
-    env = gym.make(
-        f'rrc_simulation.gym_wrapper:{env_name}-v1',
+    # env = gym.make(
+    #     f'rrc_simulation.gym_wrapper:{env_name}-v1',
+    #     initializer=initializer,
+    #     action_type=action_type,
+    #     frameskip=action_repeat,
+    #     visualization=False,
+    # )
+    env = ReachEnv(
         initializer=initializer,
         action_type=action_type,
         frameskip=action_repeat,
