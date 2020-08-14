@@ -12,17 +12,19 @@ import kornia
 
 class Actor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
-    def __init__(self, obs_shape, action_shape, hidden_dim, hidden_depth,
-                 stddev, parameterization, use_ln, head_init_coef):
+    def __init__(self, obs_shape, action_shape, reward_shape, hidden_dim,
+                 hidden_depth, stddev, parameterization, use_ln,
+                 head_init_coef):
         super().__init__()
 
         assert parameterization in ['clipped', 'squashed']
         self.stddev = stddev
         self.dist_type = utils.SquashedNormal if parameterization == 'squashed' else utils.ClippedNormal
+        self.reward_dim = reward_shape[0]
 
         self.trunk = utils.mlp(obs_shape[0],
                                hidden_dim,
-                               action_shape[0],
+                               reward_shape[0] * action_shape[0],
                                hidden_depth,
                                use_ln=use_ln)
 
@@ -32,7 +34,7 @@ class Actor(nn.Module):
         self.trunk[-1].weight.data *= head_init_coef
 
     def forward(self, obs):
-        mu = self.trunk(obs)
+        mu = self.trunk(obs).view(obs.shape[0], self.reward_dim, -1)
         mu = torch.tanh(mu)
         std = torch.ones_like(mu) * self.stddev
 
@@ -49,24 +51,22 @@ class Actor(nn.Module):
         for i, m in enumerate(self.trunk):
             if type(m) == nn.Linear:
                 logger.log_param(f'train_actor/fc{i}', m, step)
-                
-                
 
 
 class Critic(nn.Module):
     """Critic network, employes double Q-learning."""
-    def __init__(self, obs_shape, action_shape, hidden_dim, hidden_depth,
-                 use_ln):
+    def __init__(self, obs_shape, action_shape, reward_shape, hidden_dim,
+                 hidden_depth, use_ln):
         super().__init__()
 
-        self.Q1 = utils.mlp(obs_shape[0] + action_shape[0],
+        self.Q1 = utils.mlp(obs_shape[0] + reward_shape[0] * action_shape[0],
                             hidden_dim,
-                            1,
+                            reward_shape[0],
                             hidden_depth,
                             use_ln=use_ln)
-        self.Q2 = utils.mlp(obs_shape[0] + action_shape[0],
+        self.Q2 = utils.mlp(obs_shape[0] + reward_shape[0] * action_shape[0],
                             hidden_dim,
-                            1,
+                            reward_shape[0],
                             hidden_depth,
                             use_ln=use_ln)
 
@@ -99,11 +99,11 @@ class Critic(nn.Module):
 
 class DDPGAgent(object):
     """Data regularized Q: actor-critic method for learning from pixels."""
-    def __init__(self, obs_shape, action_shape, action_range, device,
-                 critic_cfg, actor_cfg, discount, lr,
+    def __init__(self, obs_shape, action_shape, reward_shape, action_range,
+                 device, critic_cfg, actor_cfg, discount, lr,
                  actor_update_frequency, critic_tau,
-                 critic_target_update_frequency, batch_size, nstep,
-                 use_ln, head_init_coef):
+                 critic_target_update_frequency, batch_size, nstep, use_ln,
+                 head_init_coef):
         self.action_range = action_range
         self.device = device
         self.discount = discount
@@ -133,20 +133,22 @@ class DDPGAgent(object):
         self.actor.train(training)
         self.critic.train(training)
 
-    def act(self, obs, sample=False):
+    def act(self, obs, sample=False, task_id=0):
         obs = torch.FloatTensor(obs).to(self.device)
         obs = obs.unsqueeze(0)
         dist = self.actor(obs)
-        action = dist.sample() if sample else dist.mean
-        action = action.clamp(*self.action_range)
-        assert action.ndim == 2 and action.shape[0] == 1
-        return utils.to_np(action[0])
+        actions = dist.sample() if sample else dist.mean
+        actions = actions.clamp(*self.action_range)
+        action = actions[0, task_id]
+        assert action.ndim == 1
+        return utils.to_np(action)
 
     def update_critic(self, obs, action, reward, next_obs, discount, logger,
                       step):
         with torch.no_grad():
             dist = self.actor(next_obs)
             next_action = dist.rsample()
+            next_action = next_action.view(next_action.shape[0], -1)
             target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
             target_V = torch.min(target_Q1, target_Q2)
             target_Q = reward + (discount * target_V)
@@ -156,6 +158,10 @@ class DDPGAgent(object):
         logger.log('train_critic/q', target_Q.mean(), step)
         logger.log('train_critic/v', target_V.mean(), step)
 
+        action = action.unsqueeze(1)
+        action = action.expand(action.shape[0], reward.shape[1],
+                               action.shape[2])
+        action = action.reshape(action.shape[0], -1)
         Q1, Q2 = self.critic(obs, action)
         critic_loss = F.mse_loss(Q1, target_Q) + F.mse_loss(Q2, target_Q)
 
@@ -174,6 +180,7 @@ class DDPGAgent(object):
         dist = self.actor(obs)
         action = dist.rsample()
         log_prob = dist.log_prob(action).sum(-1, keepdim=True)
+        action = action.view(action.shape[0], -1)
         Q1, Q2 = self.critic(obs, action)
         Q = torch.min(Q1, Q2)
 
@@ -188,7 +195,6 @@ class DDPGAgent(object):
         self.actor_optimizer.step()
 
         self.actor.log(logger, step)
-        
 
     def update(self, replay_buffer, logger, step):
         obs, action, reward, next_obs, discount = \
@@ -206,19 +212,14 @@ class DDPGAgent(object):
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
 
-            
     def save(self, model_dir, step):
-        torch.save(
-            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
-        )
-        torch.save(
-            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
-        )
+        torch.save(self.actor.state_dict(),
+                   '%s/actor_%s.pt' % (model_dir, step))
+        torch.save(self.critic.state_dict(),
+                   '%s/critic_%s.pt' % (model_dir, step))
 
     def load(self, model_dir, step):
         self.actor.load_state_dict(
-            torch.load('%s/actor_%s.pt' % (model_dir, step))
-        )
+            torch.load('%s/actor_%s.pt' % (model_dir, step)))
         self.critic.load_state_dict(
-            torch.load('%s/critic_%s.pt' % (model_dir, step))
-        )
+            torch.load('%s/critic_%s.pt' % (model_dir, step)))

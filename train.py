@@ -47,9 +47,13 @@ class Workspace(object):
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
+        reward_space = self.env.reward_space
+
+        self.num_tasks = self.env.reward_space.shape[0]
 
         cfg.agent.params.obs_shape = obs_space.shape
         cfg.agent.params.action_shape = action_space.shape
+        cfg.agent.params.reward_shape = reward_space.shape
         cfg.agent.params.action_range = [
             float(self.env.action_space.low.min()),
             float(self.env.action_space.high.max())
@@ -57,6 +61,7 @@ class Workspace(object):
         self.agent = hydra.utils.instantiate(cfg.agent)
 
         self.replay_buffer = ReplayBuffer(obs_space.shape, action_space.shape,
+                                          reward_space.shape,
                                           cfg.replay_buffer_capacity,
                                           self.device, cfg.random_nstep)
 
@@ -73,17 +78,18 @@ class Workspace(object):
             obs = self.eval_env.reset()
             self.video_recorder.init(enabled=(episode == 0))
             done = False
-            episode_reward = 0
+            episode_reward = np.zeros(self.num_tasks, dtype=np.float32)
             episode_step = 0
             while not done:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=False)
+                    # task_id=0 is the main task
+                    action = self.agent.act(obs, sample=False, task_id=0)
                 obs, reward, done, info = self.eval_env.step(action)
                 self.video_recorder.record()
                 episode_reward += reward
                 episode_step += 1
 
-            average_episode_reward += episode_reward
+            average_episode_reward += episode_reward[0]
             average_episode_length += episode_step
             self.video_recorder.save(f'{self.step}.mp4')
         average_episode_reward /= self.cfg.num_eval_episodes
@@ -95,7 +101,8 @@ class Workspace(object):
         self.logger.dump(self.step, ty='eval')
 
     def run(self):
-        episode, episode_reward, episode_step, done = 0, 0, 0, True
+        episode, episode_step, done = 0, 0, True
+        episode_reward = np.zeros(self.num_tasks, dtype=np.float32)
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
             if done:
@@ -108,14 +115,17 @@ class Workspace(object):
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
-                self.logger.log('train/episode_reward', episode_reward,
+                self.logger.log('train/episode_reward', episode_reward[0],
                                 self.step)
+                self.logger.log('train/episode_total_reward',
+                                episode_reward.mean(), self.step)
 
                 obs = self.env.reset()
                 done = False
-                episode_reward = 0
+                episode_reward = np.zeros(self.num_tasks, dtype=np.float32)
                 episode_step = 0
                 episode += 1
+                task_id = np.random.randint(0, self.num_tasks)
 
                 self.logger.log('train/episode', episode, self.step)
 
@@ -129,6 +139,9 @@ class Workspace(object):
                             self.cfg.action_repeat) == 0:
                 self.agent.save(self.model_dir, self.step)
 
+            if episode_step % self.cfg.switch_task_frequency == 0:
+                task_id = np.random.randint(0, self.num_tasks)
+
             # sample action for data collection
             if self.step < self.cfg.num_seed_steps:
                 action_space = self.env.action_space
@@ -137,7 +150,7 @@ class Workspace(object):
                                            action_space.shape)
             else:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=True)
+                    action = self.agent.act(obs, sample=True, task_id=task_id)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:

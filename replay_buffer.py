@@ -9,7 +9,7 @@ import utils
 
 class ReplayBuffer(object):
     """Buffer to store environment transitions."""
-    def __init__(self, obs_shape, action_shape, capacity, device,
+    def __init__(self, obs_shape, action_shape, reward_shape, capacity, device,
                  random_nstep):
         self.capacity = capacity
         self.device = device
@@ -18,7 +18,7 @@ class ReplayBuffer(object):
         self.obses = np.empty((capacity, *obs_shape), dtype=np.float32)
         self.next_obses = np.empty((capacity, *obs_shape), dtype=np.float32)
         self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
-        self.rewards = np.empty((capacity, 1), dtype=np.float32)
+        self.rewards = np.empty((capacity, *reward_shape), dtype=np.float32)
         self.dones = np.empty((capacity, 1), dtype=np.float32)
 
         self.idx = 0
@@ -50,7 +50,7 @@ class ReplayBuffer(object):
         next_obses = torch.as_tensor(next_obses, device=self.device).float()
         actions = torch.as_tensor(self.actions[idxs], device=self.device)
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        discounts = np.ones((idxs.shape[0], 1), dtype=np.float32) * discount
+        discounts = np.ones(rewards.shape, dtype=np.float32) * discount
         discounts = torch.as_tensor(discounts, device=self.device)
 
         return obses, actions, rewards, next_obses, discounts

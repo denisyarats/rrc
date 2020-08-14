@@ -1,6 +1,6 @@
 # env
-env: cube
-action_type: position # torque or both
+env: multi_cube
+action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
 fixed_env: true
@@ -9,6 +9,7 @@ episode_length: 1000
 num_train_steps: 1000000
 num_seed_steps: 1000
 num_train_iters: 1
+switch_task_frequency: 100
 replay_buffer_capacity: ${num_train_steps}
 seed: 1
 # eval
@@ -39,6 +40,7 @@ agent:
   params:
     obs_shape: ??? # to be specified later
     action_shape: ??? # to be specified later
+    reward_shape: ??? # to be specified later
     action_range: ??? # to be specified later
     device: ${device}
     critic_cfg: ${critic}
@@ -58,6 +60,7 @@ critic:
   params:
     obs_shape: ${agent.params.obs_shape}
     action_shape: ${agent.params.action_shape}
+    reward_shape: ${agent.params.reward_shape}
     hidden_dim: ${hidden_dim}
     hidden_depth: ${hidden_depth}
     use_ln: ${agent.params.use_ln}
@@ -67,6 +70,7 @@ actor:
   params:
     obs_shape: ${agent.params.obs_shape}
     action_shape: ${agent.params.action_shape}
+    reward_shape: ${agent.params.reward_shape}
     hidden_dim: ${hidden_dim}
     hidden_depth: ${hidden_depth}
     stddev: ${actor_stddev}

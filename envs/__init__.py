@@ -56,3 +56,8 @@ register(
     id="cube-v1",
     entry_point="envs.cube_env:CubeEnv",
 )
+
+register(
+    id="multi_cube-v1",
+    entry_point="envs.multi_cube_env:MultiCubeEnv",
+)
