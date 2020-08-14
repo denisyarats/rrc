@@ -1,37 +1,40 @@
-from cube_env import CubeEnv
+from rrc.envs.cube_env import CubeEnv
 from rrc_simulation.tasks import move_cube
 
 import numpy as np
 
 from dm_control.utils import rewards
 
-from envs import ActionType
+from rrc.envs import ActionType
+from rrc.envs import initializers
 
 
-class Task(CubeEnv):
+class Task:
     """a Task specifies a reward and initializer in a CubeEnv."""
+    def __init__(self, initializer):
+        self.initializer = initializer
+        self.difficulty = initializer.difficulty
 
-    def __init__(self,
-                initializer,
-                action_type=ActionType.POSITION,
-                frameskip=1,
-                visualization=False,
-                episode_length=move_cube.episode_length,
-            ):
-        super(Task, self).__init__(initializer, action_type, frameskip,
-                                    visualization, episode_length)
-
-    def compute_reward(self, observation, info):
-
+    def compute_reward(self, observation, platform):
         raise NotImplementedError
+
+    def get_initial_state(self):
+        return self.initializer.get_initial_state()
+
+    def get_goal(self):
+        return self.initializer.get_goal()
 
 
 class ReachAndPush(Task):
     """Task to reach and push."""
-    def compute_reward(self, observation, info):
+    def __init__(self, initializer):
+        super().__init__(initializer)
+
+
+    def compute_reward(self, observation, platform):
         radius = move_cube._cube_3d_radius
-        robot_id = self.platform.simfinger.finger_id
-        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
+        robot_id = platform.simfinger.finger_id
+        finger_ids = platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
         object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
@@ -70,37 +73,40 @@ class ReachAndPush(Task):
         return (grasp_or_hand_away +
                 in_place_weight * in_place) / (1.0 + in_place_weight)
 
-        finger_pos = pybullet.getLinkState(robot_id, finger_tip_id)[0]
-        target_pos = move_cube.Pose.from_dict(observation['desired_goal'])
-
-        dist = np.linalg.norm(finger_pos - target_pos.position)
-        radius = move_cube._CUBE_WIDTH
-
-        return rewards.tolerance(dist, bounds=(0, radius), margin=radius)
-
 
 class ReachObject(Task):
     """Dense reaching task"""
-    def compute_reward(self, observation, info):
+    def __init__(self, initializer):
+        super().__init__(initializer)
+
+    def compute_reward(self, observation):
         radius = move_cube._cube_3d_radius
         robot_id = self.platform.simfinger.finger_id
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
         object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
 
-        dist = 0
+        reward = 0
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            dist += np.linalg.norm(finger_pos - object_pos)
+            finger_to_object = np.linalg.norm(finger_pos - object_pos)
+            reward += rewards.tolerance(finger_to_object,
+                                       bounds=(0, radius),
+                                       margin=radius,
+                                       value_at_margin=0.2,
+                                       sigmoid='long_tail')
 
-        return np.exp(-dist)
+        return reward
 
 
 class RRC(Task):
     """the task from the RRC challenge, with exponentiated reward"""
-    def compute_reward(self, observation, info):
+    def __init__(self, initializer):
+        super().__init__(initializer)
+
+    def compute_reward(self, observation):
         reward = -move_cube.evaluate_state(
                     move_cube.Pose.from_dict(desired_goal),
                     move_cube.Pose.from_dict(achieved_goal),
-                    info["difficulty"],
+                    self.difficulty,
                     )
         return np.exp(reward)

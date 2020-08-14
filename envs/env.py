@@ -1,4 +1,7 @@
-"""Gym environment for the Real Robot Challenge Phase 1 (Simulation)."""
+"""
+An env that contains several tasks operating on the same underlying CubeEnv
+"""
+
 import enum
 
 import numpy as np
@@ -13,12 +16,14 @@ from dm_control.utils import rewards
 
 from rrc.envs import ActionType
 
+from rrc.envs.cube_env import CubeEnv
 
-class CubeEnv(gym.GoalEnv):
-    """Gym environment for moving cubes with simulated TriFingerPro."""
+
+class MultiTaskEnv(gym.GoalEnv):
+    """Multiple tasks on a single robot platform"""
     def __init__(
         self,
-        initializer,
+        task_list,
         action_type=ActionType.POSITION,
         frameskip=1,
         visualization=False,
@@ -27,9 +32,7 @@ class CubeEnv(gym.GoalEnv):
         """Initialize.
 
         Args:
-            initializer: Initializer class for providing initial cube pose and
-                goal pose.  See :class:`RandomInitializer` and
-                :class:`FixedInitializer`.
+            Task: Task class for reward and init
             action_type (ActionType): Specify which type of actions to use.
                 See :class:`ActionType` for details.
             frameskip (int):  Number of actual control steps to be performed in
@@ -40,7 +43,10 @@ class CubeEnv(gym.GoalEnv):
         # Basic initialization
         # ====================
 
-        self.initializer = initializer
+        self.task_list = task_list
+        self.n_tasks = len(task_list)
+        self.task_id = 0
+
         self.action_type = action_type
         self.visualization = visualization
         self.episode_length = episode_length
@@ -95,83 +101,51 @@ class CubeEnv(gym.GoalEnv):
             object_state_space,
         })
 
-    def compute_reward(self, observation, info):
-        """Compute the reward for the given achieved and desired goal.
+    def set_task(self, task_id):
+        self.task_id = task_id
 
-        Args:
-            achieved_goal (dict): Current pose of the object.
-            desired_goal (dict): Goal pose of the object.
-            info (dict): An info dictionary containing a field "difficulty"
-                which specifies the difficulty level.
+    def compute_reward(self, observations):
+        reward = []
+        for i,t in enumerate(self.task_list):
+            reward.append(t.compute_reward(observations[i], self.platform))
+        return np.array(reward)
 
-        Returns:
-            float: The reward that corresponds to the provided achieved goal
-            w.r.t. to the desired goal. Note that the following should always
-            hold true::
+    def reset(self):
+        # reset simulation
+        del self.platform
 
-                ob, reward, done, info = env.step()
-                assert reward == env.compute_reward(
-                    ob['achieved_goal'],
-                    ob['desired_goal'],
-                    info,
-                )
-        """
-        radius = move_cube._cube_3d_radius
-        robot_id = self.platform.simfinger.finger_id
-        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
+        # initialize simulation
+        initial_robot_position = TriFingerPlatform.spaces.robot_position.default
+        initial_object_pose = self.task_list[self.task_id].get_initial_state()
 
-        # compute reward to see if the object reached the target
-        object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
-        target_pos = move_cube.Pose.from_dict(observation['desired_goal']).position
-        object_to_target = np.linalg.norm(object_pos - target_pos)
-        in_place = rewards.tolerance(object_to_target,
-                                     bounds=(0, 0.2 * radius),
-                                     margin=2 * radius,
-                                     value_at_margin=0.2,
-                                     sigmoid='long_tail')
+        self.platform = TriFingerPlatform(
+            visualization=self.visualization,
+            initial_robot_position=initial_robot_position,
+            initial_object_pose=initial_object_pose,
+        )
 
+        self.goals = []
+        self.goal_markers = []
+        for t in self.task_list:
+            goal_object_pose = t.get_goal()
 
-        # compute reward to see that each fingert is close to the cube
-        grasp = 0
-        hand_away = 0
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(grasp, rewards.tolerance(finger_to_object,
-                                       bounds=(0, radius),
-                                       margin=2 * radius,
-                                       value_at_margin=0.2,
-                                       sigmoid='long_tail'))
+            goal = {"position": goal_object_pose.position,
+                    "orientation": goal_object_pose.orientation,
+                    }
+            self.goals.append(goal)
 
-            finger_to_target = np.linalg.norm(finger_pos - target_pos)
-            hand_away += rewards.tolerance(finger_to_target,
-                                           bounds=(3 * radius, np.inf),
-                                           margin=4 * radius,
-                                           sigmoid='long_tail')
+            # visualize the goal
+            goal_marker = visual_objects.CubeMarker(
+                width=0.065,
+                position=goal_object_pose.position,
+                orientation=goal_object_pose.orientation,
+            )
+            self.goal_markers.append(goal_marker)
 
-        #import ipdb; ipdb.set_trace()
-        grasp /= len(finger_ids)
-        hand_away /= len(finger_ids)
+        self.step_count = 0
 
-        grasp_or_hand_away = grasp #* (1 - in_place) + hand_away * in_place
-        in_place_weight = 10.0
+        return self._create_observations(0)
 
-        return (grasp_or_hand_away +
-                in_place_weight * in_place) / (1.0 + in_place_weight)
-
-        finger_pos = pybullet.getLinkState(robot_id, finger_tip_id)[0]
-        target_pos = move_cube.Pose.from_dict(observation['desired_goal'])
-
-        dist = np.linalg.norm(finger_pos - target_pos.position)
-        radius = move_cube._CUBE_WIDTH
-
-        return rewards.tolerance(dist, bounds=(0, radius), margin=radius)
-
-        #return -move_cube.evaluate_state(
-        #    move_cube.Pose.from_dict(desired_goal),
-        #    move_cube.Pose.from_dict(achieved_goal),
-        #    info["difficulty"],
-        #)
     def step(self, action):
         """Run one timestep of the environment's dynamics.
 
@@ -190,8 +164,6 @@ class CubeEnv(gym.GoalEnv):
             - reward (float) : amount of reward returned after previous action.
             - done (bool): whether the episode has ended, in which case further
               step() calls will return undefined results.
-            - info (dict): info dictionary containing the difficulty level of
-              the goal.
         """
         if self.platform is None:
             raise RuntimeError("Call `reset()` before starting to step.")
@@ -208,7 +180,7 @@ class CubeEnv(gym.GoalEnv):
             excess = step_count_after - self.episode_length
             num_steps = max(1, num_steps - excess)
 
-        reward = 0.0
+        reward = np.zeros(self.n_tasks)
         for _ in range(num_steps):
             self.step_count += 1
             if self.step_count > self.episode_length:
@@ -221,46 +193,35 @@ class CubeEnv(gym.GoalEnv):
             # Use observations of step t + 1 to follow what would be expected
             # in a typical gym environment.  Note that on the real robot, this
             # will not be possible
-            observation = self._create_observation(t + 1)
+            observations = self._create_observations(t + 1)
 
-            reward += self.compute_reward(observation, self.info)
+            reward += self.compute_reward(observations)
 
         is_done = self.step_count == self.episode_length
 
-        return observation, reward, is_done, self.info
+        return observation, reward, is_done, None
 
-    def reset(self):
-        # reset simulation
-        del self.platform
+    def _create_observations(self, t):
+        robot_observation = self.platform.get_robot_observation(t)
+        object_observation = self.platform.get_object_pose(t)
 
-        # initialize simulation
-        initial_robot_position = TriFingerPlatform.spaces.robot_position.default
-        initial_object_pose = self.initializer.get_initial_state()
-        goal_object_pose = self.initializer.get_goal()
+        observations = []
+        for i,t in enumerate(self.task_list):
+            obs = {
+                "observation": {
+                    "position": robot_observation.position,
+                    "velocity": robot_observation.velocity,
+                    "torque": robot_observation.torque,
+                },
+                "desired_goal": self.goals[i],
+                "achieved_goal": {
+                    "position": object_observation.position,
+                    "orientation": object_observation.orientation,
+                },
+            }
+            observations.append(obs)
 
-        self.platform = TriFingerPlatform(
-            visualization=self.visualization,
-            initial_robot_position=initial_robot_position,
-            initial_object_pose=initial_object_pose,
-        )
-
-        self.goal = {
-            "position": goal_object_pose.position,
-            "orientation": goal_object_pose.orientation,
-        }
-
-        # visualize the goal
-        self.goal_marker = visual_objects.CubeMarker(
-            width=0.065,
-            position=goal_object_pose.position,
-            orientation=goal_object_pose.orientation,
-        )
-
-        self.info = {"difficulty": self.initializer.difficulty}
-
-        self.step_count = 0
-
-        return self._create_observation(0)
+        return observations
 
     def seed(self, seed=None):
         """Sets the seed for this env’s random number generator.
@@ -279,24 +240,6 @@ class CubeEnv(gym.GoalEnv):
         self.np_random, seed = gym.utils.seeding.np_random(seed)
         move_cube.random = self.np_random
         return [seed]
-
-    def _create_observation(self, t):
-        robot_observation = self.platform.get_robot_observation(t)
-        object_observation = self.platform.get_object_pose(t)
-
-        observation = {
-            "observation": {
-                "position": robot_observation.position,
-                "velocity": robot_observation.velocity,
-                "torque": robot_observation.torque,
-            },
-            "desired_goal": self.goal,
-            "achieved_goal": {
-                "position": object_observation.position,
-                "orientation": object_observation.orientation,
-            },
-        }
-        return observation
 
     def _gym_action_to_robot_action(self, gym_action):
         # construct robot action depending on action type

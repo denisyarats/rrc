@@ -36,6 +36,32 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
         return observation
 
 
+class FlattenListObservationWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        low = [
+            space.low.flatten()
+            for space, _ in flat_space(self.env.observation_space)
+        ]
+
+        high = [
+            space.high.flatten()
+            for space, _ in flat_space(self.env.observation_space)
+        ]
+
+        self.observation_space = gym.spaces.Box(low=np.concatenate(low, axis=0),
+                                                high=np.concatenate(high, axis=0))
+
+    def observation(self, obs):
+        obs_list = []
+        for o in obs:
+            observation = [x.flatten() for _, x in flat_space(self.env.observation_space, o)]
+            observation = np.concatenate(observation, axis=0)
+            obs_list.append(observation)
+        return obs_list
+
+
 class ActionScalingWrapper(gym.ActionWrapper):
     def __init__(self, env, low, high):
         super().__init__(env)

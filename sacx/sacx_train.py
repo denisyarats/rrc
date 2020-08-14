@@ -10,15 +10,15 @@ import time
 
 import numpy as np
 
-import rrc.envs
+from rrc import envs
 import hydra
 import torch
 import utils
 from rrc.logger import Logger
-from rrc.replay_buffer import ReplayBuffer
 from rrc.video import VideoRecorder
 
-from rrc.envs.tasks import Reach, ReachAndPush, RRC
+from rrc.envs.tasks import ReachObject, ReachAndPush, RRC
+from rrc.sacx.multi_replay_buffer import MultiReplayBuffer
 
 torch.backends.cudnn.benchmark = True
 
@@ -41,21 +41,17 @@ class Workspace(object):
         self.device = torch.device(cfg.device)
 
 #------------------------------
-        initializer = envs.make_initializer(1, cfg.fixed_env)
-        tasks = []
-        tasks.append(envs.make('reach-and-push', cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, initializer, cfg.seed))
-        tasks.append(envs.make('reach-object', cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, initializer, cfg.seed))
-        tasks.append(envs.make('rrc', cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, initializer, cfg.seed))
+        self.n_tasks = cfg.n_tasks
+        initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
+        task_list = []
+        task_list.append(ReachObject(initializer))
+        task_list.append(ReachAndPush(initializer))
+        task_list.append(RRC(initializer))
 
-
-        self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, initializer, cfg.seed)
-        self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, initializer,
-                                  cfg.seed + 1)
+        self.env = envs.make_multi(cfg.env, task_list, cfg.action_type,
+                                cfg.action_repeat, cfg.episode_length, cfg.seed)
+        self.eval_env = envs.make_multi(cfg.env, task_list, cfg.action_type,
+                                cfg.action_repeat, cfg.episode_length, cfg.seed + 1)
 #-------------------------------
 
         obs_space = self.env.observation_space
@@ -69,9 +65,11 @@ class Workspace(object):
         ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
-        self.replay_buffer = ReplayBuffer(obs_space.shape, action_space.shape,
-                                          cfg.replay_buffer_capacity,
-                                          self.device, cfg.random_nstep)
+        self.buffer = MultiReplayBuffer(obs_space.shape,
+                                        action_space.shape,
+                                        cfg.replay_buffer_capacity,
+                                        self.device, cfg.random_nstep,
+                                        self.n_tasks)
 
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None,
@@ -82,35 +80,40 @@ class Workspace(object):
     def evaluate(self):
         average_episode_reward = 0
         average_episode_length = 0
-        for episode in range(self.cfg.num_eval_episodes):
-            obs = self.eval_env.reset()
-            self.video_recorder.init(enabled=(episode == 0))
-            done = False
-            episode_reward = 0
-            episode_step = 0
-            while not done:
-                with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=False)
-                obs, reward, done, info = self.eval_env.step(action)
-                self.video_recorder.record()
-                episode_reward += reward
-                episode_step += 1
+        for task_id in range(self.n_tasks):
+            for episode in range(self.cfg.num_eval_episodes):
+                obs = self.eval_env.reset()
+                self.video_recorder.init(enabled=(episode == 0))
+                done = False
+                episode_reward = 0
+                episode_step = 0
+                while not done:
+                    with utils.eval_mode(self.agent):
+                        action = self.agent.act(obs, task_id, sample=False)
+                    obs, reward, done, info = self.eval_env.step(action)
+                    self.video_recorder.record()
+                    episode_reward += reward
+                    episode_step += 1
 
-            average_episode_reward += episode_reward
-            average_episode_length += episode_step
-            self.video_recorder.save(f'{self.step}.mp4')
-        average_episode_reward /= self.cfg.num_eval_episodes
-        average_episode_length /= self.cfg.num_eval_episodes
-        self.logger.log('eval/episode_reward', average_episode_reward,
-                        self.step)
-        self.logger.log('eval/episode_length', average_episode_length,
-                        self.step)
-        self.logger.dump(self.step, ty='eval')
+                average_episode_reward += episode_reward
+                average_episode_length += episode_step
+                self.video_recorder.save(f'{self.step}.mp4')
+            average_episode_reward /= self.cfg.num_eval_episodes
+            average_episode_length /= self.cfg.num_eval_episodes
+            self.logger.log('eval/episode_reward', average_episode_reward,
+                            self.step)
+            self.logger.log('eval/episode_length', average_episode_length,
+                            self.step)
+            self.logger.dump(self.step, ty='eval')
 
     def run(self):
         episode, episode_reward, episode_step, done = 0, 0, 0, True
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
+            # query scheduler to select task
+            if episode_step % self.cfg.switch_task_frequency == 0:
+                task_id = self.agent.scheduler.choose_task()
+
             if done:
                 if self.step > 0:
                     fps = episode_step / (time.time() - start_time)
@@ -124,6 +127,7 @@ class Workspace(object):
                 self.logger.log('train/episode_reward', episode_reward,
                                 self.step)
 
+                self.env.set_task(task_id)
                 obs = self.env.reset()
                 done = False
                 episode_reward = 0
@@ -150,18 +154,18 @@ class Workspace(object):
                                            action_space.shape)
             else:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=True)
+                    action = self.agent.act(obs, task_id, sample=True)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:
                 for _ in range(self.cfg.num_train_iters):
-                    self.agent.update(self.replay_buffer, self.logger,
+                    self.agent.update(self.buffer, self.logger,
                                       self.step)
 
             next_obs, reward, done, info = self.env.step(action)
             episode_reward += reward
 
-            self.replay_buffer.add(obs, action, reward, next_obs, done)
+            self.buffer.add(obs, action, reward, next_obs, done)
 
             obs = next_obs
             episode_step += 1

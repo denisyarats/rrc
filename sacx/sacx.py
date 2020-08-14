@@ -17,6 +17,11 @@ Questions:
 - how do we choose tasks?
 """
 
+"""
+TODO:
+- multitask logging
+"""
+
 
 """
 This is a modification of DDPG to use multiple tasks along with a scheduler
@@ -94,13 +99,13 @@ class Critic(nn.Module):
                  n_tasks):
         super().__init__()
 
-        self.Q1 = utils.mlp(n_tasks,
+        self.Q1 = utils.sacx_mlp(n_tasks,
                             obs_shape[0] + action_shape[0],
                             hidden_dim,
                             1,
                             hidden_depth,
                             use_ln=use_ln)
-        self.Q2 = utils.mlp(n_tasks,
+        self.Q2 = utils.sacx_mlp(n_tasks,
                             obs_shape[0] + action_shape[0],
                             hidden_dim,
                             1,
@@ -142,7 +147,7 @@ class Scheduler(object):
     def __init__(self, n_tasks):
         self.n_tasks = n_tasks
 
-    def choose_policy(self):
+    def choose_task(self):
         return np.random.choice(self.n_tasks)
 
 
@@ -186,21 +191,23 @@ class SACXAgent(object):
         self.actor.train(training)
         self.critic.train(training)
 
-    def act(self, obs, sample=False):
+    def act(self, obs, task_id, sample=False):
         obs = torch.FloatTensor(obs).to(self.device)
         obs = obs.unsqueeze(0)
-        dist = self.actor(obs)
+        dist = self.actor(obs)[task_id]
         action = dist.sample() if sample else dist.mean
         action = action.clamp(*self.action_range)
         assert action.ndim == 2 and action.shape[0] == 1
         return utils.to_np(action[0])
 
     def update_critic(self, obs, action, reward, next_obs, discount, logger,
-                      step):
+                      step, task_id):
         with torch.no_grad():
-            dist = self.actor(next_obs)
+            dist = self.actor(next_obs)[task_id]
             next_action = dist.rsample()
             target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
+            target_Q1 = target_Q1[task_id]
+            target_Q2 = target_Q2[task_id]
             target_V = torch.min(target_Q1, target_Q2)
             target_Q = reward + (discount * target_V)
 
@@ -210,6 +217,8 @@ class SACXAgent(object):
         logger.log('train_critic/v', target_V.mean(), step)
 
         Q1, Q2 = self.critic(obs, action)
+        Q1 = Q1[task_id]
+        Q2 = Q2[task_id]
         critic_loss = F.mse_loss(Q1, target_Q) + F.mse_loss(Q2, target_Q)
 
         logger.log('train_critic/q1', Q1.mean(), step)
@@ -223,11 +232,13 @@ class SACXAgent(object):
 
         self.critic.log(logger, step)
 
-    def update_actor(self, obs, logger, step):
-        dist = self.actor(obs)
+    def update_actor(self, obs, logger, step, task_id):
+        dist = self.actor(obs)[task_id]
         action = dist.rsample()
         log_prob = dist.log_prob(action).sum(-1, keepdim=True)
         Q1, Q2 = self.critic(obs, action)
+        Q1 = Q1[task_id]
+        Q2 = Q2[task_id]
         Q = torch.min(Q1, Q2)
 
         actor_loss = -Q.mean()
@@ -243,21 +254,25 @@ class SACXAgent(object):
         self.actor.log(logger, step)
 
 
-    def update(self, replay_buffer, logger, step):
-        obs, action, reward, next_obs, discount = \
-          replay_buffer.sample(self.batch_size, self.discount, self.nstep)
+    def update(self, multi_replay_buffer, logger, step):
+        for task_id in range(self.n_tasks):
+            obs, action, reward, next_obs, discount = \
+                multi_replay_buffer.sample(self.batch_size, self.discount,
+                                                self.nstep, task_id)
 
-        logger.log('train/batch_reward', reward.mean(), step)
+            logger.log('train/batch_reward', reward.mean(), step)
 
-        self.update_critic(obs, action, reward, next_obs, discount, logger,
-                           step)
+            self.update_critic(obs, action, reward, next_obs, discount, logger,
+                                step, task_id)
 
-        if step % self.actor_update_frequency == 0:
-            self.update_actor(obs, logger, step)
+            if step % self.actor_update_frequency == 0:
+                self.update_actor(obs, logger, step, task_id)
 
         if step % self.critic_target_update_frequency == 0:
             utils.soft_update_params(self.critic, self.critic_target,
-                                     self.critic_tau)
+                                         self.critic_tau)
+
+
 
 
     def save(self, model_dir, step):
