@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 
-from rrc.envs import initializers, wrappers
+from envs import initializers, wrappers
 from rrc_simulation.gym_wrapper.envs import cube_env
 
 ActionType = cube_env.ActionType
@@ -55,19 +55,4 @@ register(
 register(
     id="cube-v1",
     entry_point="envs.cube_env:CubeEnv",
-)
-
-register(
-    id="reach-and-push-v1",
-    entry_point="envs.tasks:ReachAndPush",
-)
-
-register(
-    id="reach-object-v1",
-    entry_point="envs.tasks:ReachObject",
-)
-
-register(
-    id="rrc-v1",
-    entry_point="envs.tasks:RRC",
 )

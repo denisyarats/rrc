@@ -1,0 +1,97 @@
+# env
+env: sacx
+action_type: torque # torque or both
+action_repeat: 10
+difficulty: 1
+fixed_env: true
+episode_length: 1000
+# train
+num_train_steps: 1000000
+num_seed_steps: 1000
+num_train_iters: 1
+replay_buffer_capacity: ${num_train_steps}
+seed: 1
+# eval
+eval_frequency: 10000
+num_eval_episodes: 10
+# misc
+log_frequency_step: 10000
+log_save_tb: true
+save_video: true
+video_fps: 50
+device: cpu
+# saving
+save_frequency: 100000
+# global params
+lr: 5e-4
+batch_size: 1024
+parameterization: clipped
+actor_stddev: 0.2
+hidden_depth: 2
+hidden_dim: 1024
+nstep: 1
+random_nstep: false
+
+
+agent:
+  name: ddpg
+  class: ddpg.DDPGAgent
+  params:
+    obs_shape: ??? # to be specified later
+    action_shape: ??? # to be specified later
+    action_range: ??? # to be specified later
+    device: ${device}
+    critic_cfg: ${critic}
+    actor_cfg: ${actor}
+    discount: 0.99
+    lr: ${lr}
+    actor_update_frequency: 1
+    critic_tau: 0.01
+    critic_target_update_frequency: 1
+    batch_size: ${batch_size}
+    nstep: ${nstep}
+    use_ln: true
+    head_init_coef: 1.0
+
+critic:
+  class: ddpg.Critic
+  params:
+    obs_shape: ${agent.params.obs_shape}
+    action_shape: ${agent.params.action_shape}
+    hidden_dim: ${hidden_dim}
+    hidden_depth: ${hidden_depth}
+    use_ln: ${agent.params.use_ln}
+
+actor:
+  class: ddpg.Actor
+  params:
+    obs_shape: ${agent.params.obs_shape}
+    action_shape: ${agent.params.action_shape}
+    hidden_dim: ${hidden_dim}
+    hidden_depth: ${hidden_depth}
+    stddev: ${actor_stddev}
+    parameterization: ${parameterization}
+    use_ln: ${agent.params.use_ln}
+    head_init_coef: ${agent.params.head_init_coef}
+
+
+experiment: bench
+
+# hydra configuration
+hydra:
+  name: ${env}
+  run:
+    dir: ./exp_local/${now:%Y.%m.%d}/${now:%H%M%S}_${hydra.job.override_dirname}
+  sweep:
+    dir: ./exp/${now:%Y.%m.%d}/${now:%H%M%S}_${agent.name}_${experiment}
+    subdir: ${hydra.job.num}
+  launcher:
+    params:
+      queue_parameters:
+        slurm:
+          max_num_timeout: 100000
+          time: 4319
+          partition: learnfair
+          #partition: priority
+          #comment: neurips_abstract_deadline_may_27
+    mem_limit: 64
