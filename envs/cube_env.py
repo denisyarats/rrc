@@ -125,8 +125,9 @@ class CubeEnv(gym.GoalEnv):
         target_pos = move_cube.Pose.from_dict(observation['desired_goal']).position
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
-                                     bounds=(0, 0.1 * radius),
-                                     margin=radius,
+                                     bounds=(0, 0.2 * radius),
+                                     margin=2 * radius,
+                                     value_at_margin=0.2,
                                      sigmoid='long_tail')
 
 
@@ -136,10 +137,11 @@ class CubeEnv(gym.GoalEnv):
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp += rewards.tolerance(finger_to_object,
+            grasp = max(grasp, rewards.tolerance(finger_to_object,
                                        bounds=(0, radius),
-                                       margin=radius,
-                                       sigmoid='long_tail')
+                                       margin=2 * radius,
+                                       value_at_margin=0.2,
+                                       sigmoid='long_tail'))
 
             finger_to_target = np.linalg.norm(finger_pos - target_pos)
             hand_away += rewards.tolerance(finger_to_target,
@@ -151,7 +153,7 @@ class CubeEnv(gym.GoalEnv):
         grasp /= len(finger_ids)
         hand_away /= len(finger_ids)
 
-        grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
+        grasp_or_hand_away = grasp #* (1 - in_place) + hand_away * in_place
         in_place_weight = 10.0
 
         return (grasp_or_hand_away +
