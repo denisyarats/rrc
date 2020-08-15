@@ -21,7 +21,7 @@ log_frequency_step: 10000
 log_save_tb: true
 save_video: true
 video_fps: 50
-device: cpu
+device: cuda
 # saving
 save_frequency: 100000
 # global params

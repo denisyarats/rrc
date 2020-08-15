@@ -8,6 +8,8 @@ from dm_control.utils import rewards
 from rrc.envs import ActionType
 from rrc.envs import initializers
 
+import pybullet
+
 
 class Task:
     """a Task specifies a reward and initializer in a CubeEnv."""
@@ -79,10 +81,10 @@ class ReachObject(Task):
     def __init__(self, initializer):
         super().__init__(initializer)
 
-    def compute_reward(self, observation):
+    def compute_reward(self, observation, platform):
         radius = move_cube._cube_3d_radius
-        robot_id = self.platform.simfinger.finger_id
-        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
+        robot_id = platform.simfinger.finger_id
+        finger_ids = platform.simfinger.pybullet_tip_link_indices
         object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
 
         reward = 0
@@ -103,10 +105,20 @@ class RRC(Task):
     def __init__(self, initializer):
         super().__init__(initializer)
 
-    def compute_reward(self, observation):
-        reward = -move_cube.evaluate_state(
-                    move_cube.Pose.from_dict(desired_goal),
-                    move_cube.Pose.from_dict(achieved_goal),
-                    self.difficulty,
-                    )
-        return np.exp(reward)
+    def compute_reward(self, observation, platform):
+        radius = move_cube._cube_3d_radius
+        object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
+        target_pos = move_cube.Pose.from_dict(observation['desired_goal']).position
+        object_to_target = np.linalg.norm(object_pos - target_pos)
+        reward = rewards.tolerance(object_to_target,
+                                     bounds=(0, 0.1 * radius),
+                                     margin=radius,
+                                     value_at_margin=0.2,
+                                     sigmoid='long_tail')
+        return reward
+        # reward = -move_cube.evaluate_state(
+        #             move_cube.Pose.from_dict(observation['desired_goal']),
+        #             move_cube.Pose.from_dict(observation['achieved_goal']),
+        #             self.difficulty,
+        #             )
+        # return np.exp(reward)

@@ -14,7 +14,7 @@ from rrc import envs
 import hydra
 import torch
 import utils
-from rrc.logger import Logger
+from rrc.sacx.multi_logger import Logger
 from rrc.video import VideoRecorder
 
 from rrc.envs.tasks import ReachObject, ReachAndPush, RRC
@@ -92,22 +92,23 @@ class Workspace(object):
                         action = self.agent.act(obs, task_id, sample=False)
                     obs, reward, done, info = self.eval_env.step(action)
                     self.video_recorder.record()
-                    episode_reward += reward
+                    episode_reward += reward[task_id]
                     episode_step += 1
 
                 average_episode_reward += episode_reward
                 average_episode_length += episode_step
-                self.video_recorder.save(f'{self.step}.mp4')
+                self.video_recorder.save(f'{self.step}_{task_id}.mp4')
             average_episode_reward /= self.cfg.num_eval_episodes
             average_episode_length /= self.cfg.num_eval_episodes
-            self.logger.log('eval/episode_reward', average_episode_reward,
+            self.logger.log(f'eval/episode_reward', average_episode_reward,
                             self.step)
-            self.logger.log('eval/episode_length', average_episode_length,
+            self.logger.log(f'eval/episode_length', average_episode_length,
                             self.step)
-            self.logger.dump(self.step, ty='eval')
+            self.logger.dump(self.step, task_id, ty='eval')
 
     def run(self):
-        episode, episode_reward, episode_step, done = 0, 0, 0, True
+        episode, episode_step, done = 0, 0, True
+        episode_reward = np.zeros(self.n_tasks)
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
             # query scheduler to select task
@@ -121,16 +122,20 @@ class Workspace(object):
                     start_time = time.time()
                     self.logger.dump(
                         self.step,
+                        task_id,
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
-                self.logger.log('train/episode_reward', episode_reward,
+                for i in range(self.n_tasks):
+                    self.logger.log('train/episode_reward', episode_reward[i],
                                 self.step)
 
+                task_id = self.agent.scheduler.choose_task()
                 self.env.set_task(task_id)
+
                 obs = self.env.reset()
                 done = False
-                episode_reward = 0
+                episode_reward = np.zeros(self.n_tasks)
                 episode_step = 0
                 episode += 1
 
@@ -140,7 +145,7 @@ class Workspace(object):
             if self.step % (self.cfg.eval_frequency //
                             self.cfg.action_repeat) == 0:
                 self.logger.log('eval/episode', episode, self.step)
-                self.evaluate()
+                #self.evaluate()
 
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:

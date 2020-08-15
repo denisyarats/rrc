@@ -199,7 +199,7 @@ class MultiTaskEnv(gym.GoalEnv):
 
         is_done = self.step_count == self.episode_length
 
-        return observation, reward, is_done, None
+        return observations, reward, is_done, None
 
     def _create_observations(self, t):
         robot_observation = self.platform.get_robot_observation(t)

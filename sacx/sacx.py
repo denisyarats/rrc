@@ -46,12 +46,11 @@ class Actor(nn.Module):
                  stddev, parameterization, use_ln, head_init_coef,
                  n_tasks):
         super().__init__()
+        self.n_tasks = n_tasks
 
         assert parameterization in ['clipped', 'squashed']
         self.stddev = stddev
         self.dist_type = utils.SquashedNormal if parameterization == 'squashed' else utils.ClippedNormal
-
-        self.n_tasks = n_tasks
 
         self.trunk = utils.sacx_mlp(n_tasks,
                                obs_shape[0],
@@ -98,6 +97,7 @@ class Critic(nn.Module):
                  use_ln,
                  n_tasks):
         super().__init__()
+        self.n_tasks = n_tasks
 
         self.Q1 = utils.sacx_mlp(n_tasks,
                             obs_shape[0] + action_shape[0],
@@ -192,7 +192,7 @@ class SACXAgent(object):
         self.critic.train(training)
 
     def act(self, obs, task_id, sample=False):
-        obs = torch.FloatTensor(obs).to(self.device)
+        obs = torch.FloatTensor(obs).to(self.device)[task_id]
         obs = obs.unsqueeze(0)
         dist = self.actor(obs)[task_id]
         action = dist.sample() if sample else dist.mean
