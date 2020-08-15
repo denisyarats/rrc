@@ -87,7 +87,7 @@ class Workspace(object):
         average_episode_length = 0
         for task_id in range(self.n_tasks):
             for episode in range(self.cfg.num_eval_episodes):
-                obs = self.eval_env.reset()
+                obs = self.eval_env.reset(vis_id=task_id)
                 self.video_recorder.init(enabled=(episode == 0))
                 done = False
                 episode_reward = 0

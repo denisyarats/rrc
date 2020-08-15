@@ -110,7 +110,7 @@ class MultiTaskEnv(gym.GoalEnv):
             reward.append(t.compute_reward(observations[i], self.platform))
         return np.array(reward)
 
-    def reset(self):
+    def reset(self, vis_id = None):
         # reset simulation
         del self.platform
 
@@ -134,13 +134,13 @@ class MultiTaskEnv(gym.GoalEnv):
                     }
             self.goals.append(goal)
 
-            # visualize the goal
-            goal_marker = visual_objects.CubeMarker(
-                width=0.065,
-                position=goal_object_pose.position,
-                orientation=goal_object_pose.orientation,
-            )
-            self.goal_markers.append(goal_marker)
+            if vis_id is None or vis_id == t:
+                goal_marker = visual_objects.CubeMarker(
+                    width=0.065,
+                    position=goal_object_pose.position,
+                    orientation=goal_object_pose.orientation,
+                )
+                self.goal_markers.append(goal_marker)
 
         self.step_count = 0
 
