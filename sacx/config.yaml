@@ -5,7 +5,7 @@ switch_task_frequency: 500
 action_type: torque # torque or both
 action_repeat: 10
 difficulty: 1
-fixed_env: true
+fixed_env: false
 episode_length: 1000
 # train
 num_train_steps: 1000000

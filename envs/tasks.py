@@ -97,7 +97,7 @@ class ReachObject(Task):
                                        value_at_margin=0.2,
                                        sigmoid='long_tail')
 
-        return reward
+        return reward / 3.
 
 
 class RRC(Task):

@@ -254,19 +254,19 @@ class SACXAgent(object):
         self.actor.log(logger, step)
 
 
-    def update(self, multi_replay_buffer, logger, step):
+    def update(self, multi_replay_buffer, loggers, step):
         for task_id in range(self.n_tasks):
             obs, action, reward, next_obs, discount = \
                 multi_replay_buffer.sample(self.batch_size, self.discount,
                                                 self.nstep, task_id)
 
-            logger.log('train/batch_reward', reward.mean(), step)
+            loggers[task_id].log('train/batch_reward', reward.mean(), step)
 
-            self.update_critic(obs, action, reward, next_obs, discount, logger,
+            self.update_critic(obs, action, reward, next_obs, discount, loggers[task_id],
                                 step, task_id)
 
             if step % self.actor_update_frequency == 0:
-                self.update_actor(obs, logger, step, task_id)
+                self.update_actor(obs, loggers[task_id], step, task_id)
 
         if step % self.critic_target_update_frequency == 0:
             utils.soft_update_params(self.critic, self.critic_target,
