@@ -153,7 +153,7 @@ class Workspace(object):
                             self.cfg.action_repeat) == 0:
                 for i in range(self.n_tasks):
                     self.loggers[i].log('eval/episode', episode, self.step)
-                #self.evaluate()
+                self.evaluate()
 
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:

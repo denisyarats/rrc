@@ -102,6 +102,8 @@ class ReplayBuffer(object):
 
     def sample_full_n(self, batch_size, discount, n, log_prob=True):
         """returns tensors of size (batch_size, n, dim)"""
+        assert discount <= 1.0
+        assert n >= 1
         assert n <= self.idx or self.full
         last_idx = (self.capacity if self.full else self.idx) - (n - 1)
         idxs = np.random.randint(0, last_idx, size=batch_size)

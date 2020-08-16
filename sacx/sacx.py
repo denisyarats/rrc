@@ -356,7 +356,7 @@ class SACXAgent(object):
             else:
                 obses, actions, rewards, next_obses, discounts, log_probs = \
                     multi_replay_buffer.sample_full_n(self.batch_size, self.discount,
-                                                    self.nstep, task_id)
+                                                        self.nstep, task_id, log_prob=True)
                 self.retrace_update_critic(obses, actions, rewards, next_obses, log_probs,
                                     discounts, loggers[task_id], step, task_id)
                 obs = obses[:,0]

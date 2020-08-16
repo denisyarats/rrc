@@ -39,5 +39,5 @@ class MultiReplayBuffer(object):
         return self.replay_buffer_list[task_id].sample_n(batch_size, discount, n)
 
     def sample_full_n(self, batch_size, discount, n, task_id, log_prob=True):
-        return self.replay_buffer_list[task_id].sample_full_n(batch_size,
+        return self.replay_buffer_list[task_id].sample_full_n(batch_size, discount,
                                                     n, log_prob)
