@@ -27,13 +27,17 @@ class MultiReplayBuffer(object):
         buff = self.replay_buffer_list[0]
         return buff.capacity if buff.full else buff.idx
 
-    def add(self, obs, action, reward, next_obs, done):
+    def add(self, obs, action, reward, next_obs, done, log_prob=None):
         for i in range(self.n_tasks):
             self.replay_buffer_list[i].add(obs[i], action, reward[i],
-                                                next_obs[i], done)
+                                                next_obs[i], done, log_prob)
 
-    def sample(self, batch_size, discount, n, task_id):
-        return self.replay_buffer_list[task_id].sample( batch_size, discount, n)
+    def sample(self, batch_size, discount, n, task_id, log_prob=False):
+        return self.replay_buffer_list[task_id].sample(batch_size, discount, n, log_prob)
 
-    def sample_n(self, batch_size, discount, n):
-        return self.replay_buffer_list[task_id].sample_n( batch_size, discount, n)
+    def sample_n(self, batch_size, discount, n, task_id):
+        return self.replay_buffer_list[task_id].sample_n(batch_size, discount, n)
+
+    def sample_full_n(self, batch_size, discount, n, task_id, log_prob=True):
+        return self.replay_buffer_list[task_id].sample_full_n(batch_size,
+                                                    n, log_prob)

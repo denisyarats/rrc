@@ -21,23 +21,28 @@ class ReplayBuffer(object):
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
         self.dones = np.empty((capacity, 1), dtype=np.float32)
 
+        self.log_probs = np.empty((capacity, 1), dtype=np.float32)
+
         self.idx = 0
         self.full = False
 
     def __len__(self):
         return self.capacity if self.full else self.idx
 
-    def add(self, obs, action, reward, next_obs, done):
+    def add(self, obs, action, reward, next_obs, done, log_prob=None):
         np.copyto(self.obses[self.idx], obs)
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
         np.copyto(self.next_obses[self.idx], next_obs)
         np.copyto(self.dones[self.idx], float(done))
 
+        if log_prob is not None:
+            np.copyto(self.log_probs[self.idx], log_prob)
+
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
 
-    def sample(self, batch_size, discount, n):
+    def sample(self, batch_size, discount, n, log_prob=False):
         assert n == 1
         idxs = np.random.randint(0,
                                  self.capacity if self.full else self.idx,
@@ -53,7 +58,11 @@ class ReplayBuffer(object):
         discounts = np.ones((idxs.shape[0], 1), dtype=np.float32) * discount
         discounts = torch.as_tensor(discounts, device=self.device)
 
-        return obses, actions, rewards, next_obses, discounts
+        if not log_prob:
+            return obses, actions, rewards, next_obses, discounts
+        else:
+            log_probs = torch.as_tensor(self.log_probs[idxs], device=self.device)
+            return obses, actions, rewards, next_obses, discounts, log_probs
 
     def sample_n(self, batch_size, discount, n):
         assert n <= self.idx or self.full
@@ -90,3 +99,35 @@ class ReplayBuffer(object):
         discounts = torch.as_tensor(discounts, device=self.device)
 
         return obses, actions, rewards, next_obses, discounts
+
+    def sample_full_n(self, batch_size, n, log_prob=True):
+        """returns tensors of size (batch_size, n, dim)"""
+        assert n <= self.idx or self.full
+        last_idx = (self.capacity if self.full else self.idx) - (n - 1)
+        idxs = np.random.randint(0, last_idx, size=batch_size)
+        assert idxs.max() + n <= len(self)
+
+        obses, actions, rewards, next_obses, log_probs = [],[],[],[],[]
+        for i in range(n):
+            obses.append(torch.as_tensor(self.obses[idxs + i],
+                                device=self.device).float().unsqueeze(1))
+            next_obses.append(torch.as_tensor(self.next_obses[idxs + i],
+                                device=self.device).float().unsqueeze(1))
+            actions.append(torch.as_tensor(self.actions[idxs + i],
+                                device=self.device).unsqueeze(1))
+            rewards.append(torch.as_tensor(self.rewards[idxs + i],
+                                device=self.device).unsqueeze(1))
+            if log_prob:
+                log_probs.append(torch.as_tensor(self.log_probs[idxs + i],
+                                    device=self.device).unsqueeze(1))
+
+        obses = torch.cat(obses, dim=1)
+        actions = torch.cat(actions, dim=1)
+        rewards = torch.cat(rewards, dim=1)
+        next_obses = torch.cat(next_obses, dim=1)
+
+        if not log_prob:
+            return obses, actions, rewards, next_obses
+        else:
+            log_probs = torch.cat(log_probs, dim=1)
+            return obses, actions, rewards, next_obses, log_probs

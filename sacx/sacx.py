@@ -80,6 +80,12 @@ class Actor(nn.Module):
             dists.append(self.dist_type(mu[i], std[i]))
         return dists
 
+    def one_task_policy(self, task_id):
+        def policy(obs):
+            dists = self.forward(obs)
+            return dists[task_id]
+        return policy
+
     def log(self, logger, step):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_actor/{k}_hist', v, step)
@@ -130,6 +136,16 @@ class Critic(nn.Module):
 
         return q1, q2
 
+    def oneD_Q(self, task_id, q_number):
+        def Q(obs, action):
+            q1, q2 = self.forward(obs, action)
+            if q_number == 1:
+                return q1[task_id]
+            else:
+                return q2[task_id]
+        return Q
+
+
     def log(self, logger, step):
         for k, v in self.outputs.items():
             logger.log_histogram(f'train_critic/{k}_hist', v, step)
@@ -158,9 +174,10 @@ class SACXAgent(object):
                  actor_update_frequency, critic_tau,
                  critic_target_update_frequency, batch_size, nstep,
                  use_ln, head_init_coef,
-                 n_tasks):
+                 n_tasks, retrace=False):
         self.n_tasks = n_tasks
         self.scheduler = Scheduler(n_tasks)
+        self.retrace = retrace
 
         self.action_range = action_range
         self.device = device
@@ -191,14 +208,18 @@ class SACXAgent(object):
         self.actor.train(training)
         self.critic.train(training)
 
-    def act(self, obs, task_id, sample=False):
+    def act(self, obs, task_id, sample=False, log_prob=False):
         obs = torch.FloatTensor(obs).to(self.device)[task_id]
         obs = obs.unsqueeze(0)
         dist = self.actor(obs)[task_id]
         action = dist.sample() if sample else dist.mean
         action = action.clamp(*self.action_range)
         assert action.ndim == 2 and action.shape[0] == 1
-        return utils.to_np(action[0])
+        if not log_prob:
+            return utils.to_np(action[0])
+        else:
+            lp = dist.log_prob(action).sum()
+            return utils.to_np(action[0]), utils.to_np(lp)
 
     def update_critic(self, obs, action, reward, next_obs, discount, logger,
                       step, task_id):
@@ -232,6 +253,71 @@ class SACXAgent(object):
 
         self.critic.log(logger, step)
 
+
+#------------------------
+
+
+    def retrace_target(self, Q, policy,
+                            obses, actions,
+                            rewards, next_obses,
+                            log_probs, discount):
+        batch_size = obses.shape[0]
+        n = obses.shape[1]
+
+        target = Q(obses[:,-1], actions[:,-1])
+        for t in np.arange(n-1,-1,-1):
+            next_action = policy(next_obses[:,t]).sample()
+            # should we take more action samples?
+            next_Q = Q(next_obses[:,t], next_action)
+            current_Q = Q(obses[:,t], actions[:,t])
+
+            action_log_prob = policy(obses[:,t]).log_prob(actions[:,t]).sum(-1, keepdim=True)
+            ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:,t])
+            c_t = torch.clamp(ratio, max=1.0)
+            target = discount * c_t * target + \
+                        rewards[:,t] + discount * (next_Q - c_t * current_Q)
+
+        return target
+
+    def retrace_update_critic(self, obses, actions, rewards, next_obses, log_probs,
+                        discount, logger, step, task_id):
+        batch_size = obses.shape[0]
+        n = obses.shape[1]
+
+        Q1_func = self.critic_target.oneD_Q(task_id, 1)
+        Q2_func = self.critic_target.oneD_Q(task_id, 2)
+        policy = self.actor.one_task_policy(task_id)
+
+        with torch.no_grad():
+            target1 = self.retrace_target(Q1_func, policy, obses, actions, rewards,
+                                        next_obses, log_probs, discount)
+            target2 = self.retrace_target(Q2_func, policy, obses, actions, rewards,
+                                        next_obses, log_probs, discount)
+            min_target = torch.min(target1, target2)
+
+        logger.log('train_critic/target_q1', target1.mean(), step)
+        logger.log('train_critic/target_q2', target2.mean(), step)
+        logger.log('train_critic/q', min_target.mean(), step)
+
+        Q1, Q2 = self.critic(obses[:,0], actions[:,0])
+        Q1 = Q1[task_id]
+        Q2 = Q2[task_id]
+        critic_loss = F.mse_loss(Q1, min_target) + F.mse_loss(Q2, min_target)
+
+        logger.log('train_critic/q1', Q1.mean(), step)
+        logger.log('train_critic/q2', Q2.mean(), step)
+        logger.log('train_critic/loss', critic_loss, step)
+
+        # Optimize the critic
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        self.critic.log(logger, step)
+
+#--------------------------
+
+
     def update_actor(self, obs, logger, step, task_id):
         dist = self.actor(obs)[task_id]
         action = dist.rsample()
@@ -256,14 +342,24 @@ class SACXAgent(object):
 
     def update(self, multi_replay_buffer, loggers, step):
         for task_id in range(self.n_tasks):
-            obs, action, reward, next_obs, discount = \
-                multi_replay_buffer.sample(self.batch_size, self.discount,
-                                                self.nstep, task_id)
 
-            loggers[task_id].log('train/batch_reward', reward.mean(), step)
+            if not self.retrace:
+                obs, action, reward, next_obs, discount = \
+                    multi_replay_buffer.sample(self.batch_size, self.discount,
+                                                    self.nstep, task_id)
 
-            self.update_critic(obs, action, reward, next_obs, discount, loggers[task_id],
-                                step, task_id)
+                loggers[task_id].log('train/batch_reward', reward.mean(), step)
+
+                self.update_critic(obs, action, reward, next_obs, discount, loggers[task_id],
+                                    step, task_id)
+
+            else:
+                obses, actions, rewards, next_obses, log_probs = \
+                    multi_replay_buffer.sample_full_n(self.batch_size, self.discount,
+                                                    self.nstep, task_id)
+                self.retrace_update_critic(obses, actions, rewards, next_obses, log_probs,
+                                    self.discount, loggers[task_id], step, task_id)
+                obs = obses[:,0]
 
             if step % self.actor_update_frequency == 0:
                 self.update_actor(obs, loggers[task_id], step, task_id)

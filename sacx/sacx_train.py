@@ -165,9 +165,11 @@ class Workspace(object):
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),
                                            action_space.shape)
+                log_prob = 0.0
             else:
                 with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, task_id, sample=True)
+                    action, log_prob = self.agent.act(obs, task_id,
+                                                    sample=True, log_prob=True)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:
@@ -178,7 +180,7 @@ class Workspace(object):
             next_obs, reward, done, info = self.env.step(action)
             episode_reward += reward
 
-            self.buffer.add(obs, action, reward, next_obs, done)
+            self.buffer.add(obs, action, reward, next_obs, done, log_prob)
 
             obs = next_obs
             episode_step += 1

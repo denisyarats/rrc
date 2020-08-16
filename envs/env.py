@@ -125,7 +125,6 @@ class MultiTaskEnv(gym.GoalEnv):
         )
 
         self.goals = []
-        self.goal_markers = []
         for t in self.task_list:
             goal_object_pose = t.get_goal()
 
@@ -134,13 +133,13 @@ class MultiTaskEnv(gym.GoalEnv):
                     }
             self.goals.append(goal)
 
-            if vis_id is None or vis_id == t:
-                goal_marker = visual_objects.CubeMarker(
-                    width=0.065,
-                    position=goal_object_pose.position,
-                    orientation=goal_object_pose.orientation,
-                )
-                self.goal_markers.append(goal_marker)
+            if vis_id is not None:
+                if vis_id == t:
+                    goal_marker = visual_objects.CubeMarker(
+                        width=0.065,
+                        position=goal_object_pose.position,
+                        orientation=goal_object_pose.orientation,
+                    )
 
         self.step_count = 0
 

@@ -21,7 +21,7 @@ log_frequency_step: 10000
 log_save_tb: true
 save_video: true
 video_fps: 50
-device: cuda
+device: cpu
 # saving
 save_frequency: 100000
 # global params
@@ -31,7 +31,7 @@ parameterization: clipped
 actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
-nstep: 1
+nstep: 10
 random_nstep: false
 
 
@@ -39,6 +39,7 @@ agent:
   name: sacx
   class: sacx.SACXAgent
   params:
+    retrace: true
     obs_shape: ??? # to be specified later
     action_shape: ??? # to be specified later
     action_range: ??? # to be specified later
