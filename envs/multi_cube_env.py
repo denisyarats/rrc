@@ -40,6 +40,32 @@ class FingerToObjectTask(AuxTask):
                                    value_at_margin=0.2,
                                    sigmoid='long_tail')
         return reward
+    
+    
+class AnyFingerToObjectTask(AuxTask):
+    def __init__(self):
+        super().__init__()
+        self.reward_id = f'any_finger_to_object'
+
+    def compute_reward(self, obs, info, platform):
+        robot_id = platform.simfinger.finger_id
+        finger_ids = platform.simfinger.pybullet_tip_link_indices
+        
+        cube_radius = move_cube._cube_3d_radius
+        
+        reward = 0
+        object_pos = move_cube.Pose.from_dict(obs['achieved_goal']).position
+        
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+
+            dist = np.linalg.norm(finger_pos - object_pos)
+            reward = max(reward, rewards.tolerance(dist,
+                                       bounds=(0, cube_radius),
+                                       margin=cube_radius,
+                                       value_at_margin=0.2,
+                                       sigmoid='long_tail'))
+        return reward
 
 
 class ObjectToTargetTask(AuxTask):
@@ -107,9 +133,10 @@ class MultiCubeEnv(gym.GoalEnv):
 
         self.tasks = [
             ObjectToTargetTask(), # this is the main task
-            FingerToObjectTask(finger_idx=0),
-            FingerToObjectTask(finger_idx=1),
-            FingerToObjectTask(finger_idx=2)
+            AnyFingerToObjectTask(),
+            #FingerToObjectTask(finger_idx=0),
+            #FingerToObjectTask(finger_idx=1),
+            #FingerToObjectTask(finger_idx=2)
         ]
 
         # Create the action and observation spaces
@@ -179,7 +206,8 @@ class MultiCubeEnv(gym.GoalEnv):
             rewards.append(task.compute_reward(observation, info, self.platform))
         rewards = np.array(rewards)
         # upweight main task reward
-        main_task_weight = 10.0
+        #import ipdb; ipdb.set_trace()
+        main_task_weight = 1
         rewards[0] *= main_task_weight
         rewards /= (main_task_weight + len(rewards) - 1.0)
 

@@ -9,7 +9,7 @@ episode_length: 1000
 num_train_steps: 1000000
 num_seed_steps: 1000
 num_train_iters: 1
-switch_task_frequency: 100
+switch_task_frequency: 500
 replay_buffer_capacity: ${num_train_steps}
 seed: 1
 # eval
