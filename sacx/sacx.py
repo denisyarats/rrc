@@ -260,7 +260,7 @@ class SACXAgent(object):
     def retrace_target(self, Q, policy,
                             obses, actions,
                             rewards, next_obses,
-                            log_probs, discount):
+                            log_probs, discounts):
         batch_size = obses.shape[0]
         n = obses.shape[1]
 
@@ -274,13 +274,13 @@ class SACXAgent(object):
             action_log_prob = policy(obses[:,t]).log_prob(actions[:,t]).sum(-1, keepdim=True)
             ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:,t])
             c_t = torch.clamp(ratio, max=1.0)
-            target = discount * c_t * target + \
-                        rewards[:,t] + discount * (next_Q - c_t * current_Q)
+            target = discounts[:,t] * c_t * target + \
+                        rewards[:,t] + discounts[:,t] * (next_Q - c_t * current_Q)
 
         return target
 
     def retrace_update_critic(self, obses, actions, rewards, next_obses, log_probs,
-                        discount, logger, step, task_id):
+                        discounts, logger, step, task_id):
         batch_size = obses.shape[0]
         n = obses.shape[1]
 
@@ -290,9 +290,9 @@ class SACXAgent(object):
 
         with torch.no_grad():
             target1 = self.retrace_target(Q1_func, policy, obses, actions, rewards,
-                                        next_obses, log_probs, discount)
+                                        next_obses, log_probs, discounts)
             target2 = self.retrace_target(Q2_func, policy, obses, actions, rewards,
-                                        next_obses, log_probs, discount)
+                                        next_obses, log_probs, discounts)
             min_target = torch.min(target1, target2)
 
         logger.log('train_critic/target_q1', target1.mean(), step)
@@ -354,11 +354,11 @@ class SACXAgent(object):
                                     step, task_id)
 
             else:
-                obses, actions, rewards, next_obses, log_probs = \
+                obses, actions, rewards, next_obses, discounts, log_probs = \
                     multi_replay_buffer.sample_full_n(self.batch_size, self.discount,
                                                     self.nstep, task_id)
                 self.retrace_update_critic(obses, actions, rewards, next_obses, log_probs,
-                                    self.discount, loggers[task_id], step, task_id)
+                                    discounts, loggers[task_id], step, task_id)
                 obs = obses[:,0]
 
             if step % self.actor_update_frequency == 0:
