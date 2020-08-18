@@ -125,8 +125,8 @@ class Critic(nn.Module):
         assert obs.size(0) == action.size(0)
 
         obs_action = torch.cat([obs, action], dim=-1)
-        q1 = self.Q1(obs_action)
-        q2 = self.Q2(obs_action)
+        q1 = F.sigmoid(self.Q1(obs_action)) * 1000.
+        q2 = F.sigmoid(self.Q2(obs_action)) * 1000.
 
         self.outputs['q1'] = q1
         self.outputs['q2'] = q2
