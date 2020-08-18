@@ -27,6 +27,34 @@ class Task:
         return self.initializer.get_goal()
 
 
+
+class AnyFingerToObject(Task):
+    def __init__(self, initializer):
+        super().__init__(initializer)
+        self.reward_id = f'any_finger_to_object'
+
+    def compute_reward(self, obs, platform):
+        robot_id = platform.simfinger.finger_id
+        finger_ids = platform.simfinger.pybullet_tip_link_indices
+
+        cube_radius = move_cube._cube_3d_radius
+
+        reward = 0
+        object_pos = move_cube.Pose.from_dict(obs['achieved_goal']).position
+
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+
+            dist = np.linalg.norm(finger_pos - object_pos)
+            reward = max(reward, rewards.tolerance(dist,
+                                       bounds=(0, cube_radius),
+                                       margin=cube_radius,
+                                       value_at_margin=0.2,
+                                       sigmoid='long_tail'))
+        return reward
+
+
+
 class ReachAndPush(Task):
     """Task to reach and push."""
     def __init__(self, initializer):

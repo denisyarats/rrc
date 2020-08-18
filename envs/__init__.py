@@ -78,5 +78,5 @@ from gym.envs.registration import register
 
 register(
     id="multitask-v1",
-    entry_point="rrc.envs.env:MultiTaskEnv",
+    entry_point="rrc.envs.multi_env:MultiTaskEnv",
 )

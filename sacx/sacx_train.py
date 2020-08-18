@@ -17,7 +17,7 @@ import utils
 from rrc.logger import Logger
 from rrc.video import VideoRecorder
 
-from rrc.envs.tasks import ReachObject, ReachAndPush, RRC
+from rrc.envs.tasks import ReachObject, ReachAndPush, RRC, AnyFingerToObject
 from rrc.sacx.multi_replay_buffer import MultiReplayBuffer
 
 torch.backends.cudnn.benchmark = True
@@ -49,9 +49,11 @@ class Workspace(object):
 
         initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
         task_list = []
-        task_list.append(ReachObject(initializer))
-        task_list.append(ReachAndPush(initializer))
-        task_list.append(RRC(initializer))
+        task_list.append(AnyFingerToObject(initializer))
+        task_list.append(AnyFingerToObject(initializer))
+        #task_list.append(ReachObject(initializer))
+        #task_list.append(ReachAndPush(initializer))
+        #task_list.append(RRC(initializer))
 
         self.env = envs.make_multi(cfg.env, task_list, cfg.action_type,
                                 cfg.action_repeat, cfg.episode_length, cfg.seed)

@@ -101,9 +101,10 @@ class Critic(nn.Module):
     """Critic network, employes double Q-learning."""
     def __init__(self, obs_shape, action_shape, hidden_dim, hidden_depth,
                  use_ln,
-                 n_tasks):
+                 n_tasks, clip=0):
         super().__init__()
         self.n_tasks = n_tasks
+        self.clip=clip
 
         self.Q1 = utils.sacx_mlp(n_tasks,
                             obs_shape[0] + action_shape[0],
@@ -125,8 +126,13 @@ class Critic(nn.Module):
         assert obs.size(0) == action.size(0)
 
         obs_action = torch.cat([obs, action], dim=-1)
-        q1 = F.sigmoid(self.Q1(obs_action)) * 1000.
-        q2 = F.sigmoid(self.Q2(obs_action)) * 1000.
+
+        if self.clip == 0:
+            q1 = self.Q1(obs_action)
+            q2 = self.Q2(obs_action)
+        else:
+            q1 = F.sigmoid(self.Q1(obs_action)) * self.clip
+            q2 = F.sigmoid(self.Q2(obs_action)) * self.clip
 
         self.outputs['q1'] = q1
         self.outputs['q2'] = q2
