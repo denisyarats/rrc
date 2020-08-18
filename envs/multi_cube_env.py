@@ -25,7 +25,7 @@ class FingerToObjectTask(AuxTask):
         self.finger_idx = finger_idx
         self.reward_id = f'finger_{finger_idx}_to_object'
 
-    def compute_reward(self, obs, info, platform):
+    def compute_reward(self, obs, info, platform, **kwargs):
         robot_id = platform.simfinger.finger_id
         finger_id = platform.simfinger.pybullet_tip_link_indices[self.finger_idx]
         
@@ -47,7 +47,7 @@ class AnyFingerToObjectTask(AuxTask):
         super().__init__()
         self.reward_id = f'any_finger_to_object'
 
-    def compute_reward(self, obs, info, platform):
+    def compute_reward(self, obs, info, platform, **kwargs):
         robot_id = platform.simfinger.finger_id
         finger_ids = platform.simfinger.pybullet_tip_link_indices
         
@@ -66,6 +66,36 @@ class AnyFingerToObjectTask(AuxTask):
                                        value_at_margin=0.2,
                                        sigmoid='long_tail'))
         return reward
+    
+    
+class ExactAnyFingerToObjectTask(AuxTask):
+    def __init__(self):
+        super().__init__()
+        self.reward_id = f'any_finger_to_object'
+
+    def compute_reward(self, obs, info, platform, **kwargs):
+        robot_id = platform.simfinger.finger_id
+        finger_ids = platform.simfinger.pybullet_tip_link_indices
+        
+        cube_radius = move_cube._cube_3d_radius
+        
+        reward = 0
+        object_pos = move_cube.Pose.from_dict(obs['achieved_goal']).position
+        
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+
+            dist = np.linalg.norm(finger_pos - object_pos)
+            reward = max(reward, rewards.tolerance(dist,
+                                       bounds=(0, cube_radius),
+                                       margin=0.0,
+                                       value_at_margin=0.0,
+                                       sigmoid='linear'))
+            
+        if not kwargs['done']:
+            reward = 0.0
+        return reward
+
 
 
 class ObjectToTargetTask(AuxTask):
@@ -73,7 +103,7 @@ class ObjectToTargetTask(AuxTask):
         super().__init__()
 
     def compute_reward(self, obs, info, platform):
-        cube_width = move_cube._CUBE_WIDTH
+        cube_radius = move_cube._cube_3d_radius
         object_pos = move_cube.Pose.from_dict(
             obs['achieved_goal']).position
         target_pos = move_cube.Pose.from_dict(
@@ -81,8 +111,8 @@ class ObjectToTargetTask(AuxTask):
 
         dist = np.linalg.norm(object_pos - target_pos)
         reward = rewards.tolerance(dist,
-                                   bounds=(0, 0.1 * cube_width),
-                                   margin=cube_width,
+                                   bounds=(0, 0.2 * cube_radius),
+                                   margin=2 * cube_radius,
                                    value_at_margin=0.2,
                                    sigmoid='long_tail')
 
@@ -132,8 +162,10 @@ class MultiCubeEnv(gym.GoalEnv):
         self.platform = None
 
         self.tasks = [
-            ObjectToTargetTask(), # this is the main task
+            #ObjectToTargetTask(), # this is the main task
+            #AnyFingerToObjectTask(),
             AnyFingerToObjectTask(),
+            #AnyFingerToObjectTask(),
             #FingerToObjectTask(finger_idx=0),
             #FingerToObjectTask(finger_idx=1),
             #FingerToObjectTask(finger_idx=2)
@@ -202,15 +234,16 @@ class MultiCubeEnv(gym.GoalEnv):
                 )
         """
         rewards = []
+        done = self.step_count == self.episode_length
         for task in self.tasks:
-            rewards.append(task.compute_reward(observation, info, self.platform))
+            rewards.append(task.compute_reward(observation, info, self.platform, done=done))
         rewards = np.array(rewards)
         # upweight main task reward
         #import ipdb; ipdb.set_trace()
         main_task_weight = 1
         rewards[0] *= main_task_weight
         rewards /= (main_task_weight + len(rewards) - 1.0)
-
+        
         return rewards
 
     def step(self, action):

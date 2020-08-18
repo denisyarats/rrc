@@ -59,12 +59,14 @@ class Critic(nn.Module):
                  hidden_depth, use_ln):
         super().__init__()
 
-        self.Q1 = utils.mlp(obs_shape[0] + reward_shape[0] * action_shape[0],
+        self.num_tasks = reward_shape[0]
+
+        self.Q1 = utils.mlp(obs_shape[0] + action_shape[0],
                             hidden_dim,
                             reward_shape[0],
                             hidden_depth,
                             use_ln=use_ln)
-        self.Q2 = utils.mlp(obs_shape[0] + reward_shape[0] * action_shape[0],
+        self.Q2 = utils.mlp(obs_shape[0] + action_shape[0],
                             hidden_dim,
                             reward_shape[0],
                             hidden_depth,
@@ -145,28 +147,38 @@ class DDPGAgent(object):
 
     def update_critic(self, obs, action, reward, next_obs, discount, logger,
                       step):
+
         with torch.no_grad():
             dist = self.actor(next_obs)
-            next_action = dist.rsample()
-            next_action = next_action.view(next_action.shape[0], -1)
-            target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
+            next_actions = dist.rsample()
+            # run all actions together
+            next_actions = next_actions.view(-1, next_actions.shape[-1])
+            next_obses = next_obs.unsqueeze(1)
+            next_obses = next_obses.repeat(1, reward.shape[1], 1)
+            next_obses = next_obses.view(-1, next_obses.shape[-1])
+
+            target_Q1, target_Q2 = self.critic_target(next_obses, next_actions)
+            target_Q1 = target_Q1.view(next_obs.shape[0], -1)
+            target_Q2 = target_Q2.view(next_obs.shape[0], -1)
+
+            idx = torch.arange(reward.shape[1],
+                               device=self.device) * (reward.shape[1] + 1)
+            target_Q1 = target_Q1.index_select(1, idx)
+            target_Q2 = target_Q2.index_select(1, idx)
+
             target_V = torch.min(target_Q1, target_Q2)
             target_Q = reward + (discount * target_V)
 
-        logger.log('train_critic/target_q1', target_Q1.mean(), step)
-        logger.log('train_critic/target_q2', target_Q2.mean(), step)
-        logger.log('train_critic/q', target_Q.mean(), step)
-        logger.log('train_critic/v', target_V.mean(), step)
+        logger.log('train_critic/target_q1', target_Q1[:, 0].mean(), step)
+        logger.log('train_critic/target_q2', target_Q2[:, 0].mean(), step)
+        logger.log('train_critic/q', target_Q[:, 0].mean(), step)
+        logger.log('train_critic/v', target_V[:, 0].mean(), step)
 
-        action = action.unsqueeze(1)
-        action = action.expand(action.shape[0], reward.shape[1],
-                               action.shape[2])
-        action = action.reshape(action.shape[0], -1)
         Q1, Q2 = self.critic(obs, action)
         critic_loss = F.mse_loss(Q1, target_Q) + F.mse_loss(Q2, target_Q)
 
-        logger.log('train_critic/q1', Q1.mean(), step)
-        logger.log('train_critic/q2', Q2.mean(), step)
+        logger.log('train_critic/q1', Q1[:, 0].mean(), step)
+        logger.log('train_critic/q2', Q2[:, 0].mean(), step)
         logger.log('train_critic/loss', critic_loss, step)
 
         # Optimize the critic
@@ -178,16 +190,26 @@ class DDPGAgent(object):
 
     def update_actor(self, obs, logger, step):
         dist = self.actor(obs)
-        action = dist.rsample()
-        log_prob = dist.log_prob(action).sum(-1, keepdim=True)
-        action = action.view(action.shape[0], -1)
-        Q1, Q2 = self.critic(obs, action)
+        actions = dist.rsample()
+        num_tasks = actions.shape[1]
+        actions = actions.view(-1, actions.shape[-1])
+        obses = obs.unsqueeze(1)
+        obses = obses.repeat(1, num_tasks, 1)
+        obses = obses.view(-1, obses.shape[-1])
+        #log_prob = dist.log_prob(action).sum(-1, keepdim=True)
+
+        Q1, Q2 = self.critic(obses, actions)
+        Q1 = Q1.view(obs.shape[0], -1)
+        Q2 = Q2.view(obs.shape[0], -1)
+        idx = torch.arange(num_tasks, device=self.device) * (num_tasks + 1)
+        Q1 = Q1.index_select(1, idx)
+        Q2 = Q2.index_select(1, idx)
         Q = torch.min(Q1, Q2)
 
         actor_loss = -Q.mean()
 
         logger.log('train_actor/loss', actor_loss, step)
-        logger.log('train_actor/entropy', -log_prob.mean(), step)
+        #logger.log('train_actor/entropy', -log_prob.mean(), step)
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
@@ -200,7 +222,9 @@ class DDPGAgent(object):
         obs, action, reward, next_obs, discount = \
           replay_buffer.sample(self.batch_size, self.discount, self.nstep)
 
-        logger.log('train/batch_reward', reward.mean(), step)
+        logger.log('train/batch_reward', reward[:, 0].mean(), step)
+        for i in range(reward.shape[-1]):
+            logger.log(f'train/batch_reward_{i}', reward[:, i].mean(), step)
 
         self.update_critic(obs, action, reward, next_obs, discount, logger,
                            step)

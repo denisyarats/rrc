@@ -12,7 +12,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 COMMON_TRAIN_FORMAT = [('episode', 'E', 'int'), ('step', 'S', 'int'),
                        ('episode_reward', 'R', 'float'),
-                       ('episode_total_reward', 'TR', 'float'),
                        ('fps', 'FPS', 'float')]
 
 COMMON_EVAL_FORMAT = [('episode', 'E', 'int'), ('step', 'S', 'int'),

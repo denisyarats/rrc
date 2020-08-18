@@ -72,7 +72,7 @@ class Workspace(object):
         self.step = 0
 
     def evaluate(self):
-        average_episode_reward = 0
+        average_episode_reward = np.zeros(self.num_tasks, dtype=np.float32)
         average_episode_length = 0
         for episode in range(self.cfg.num_eval_episodes):
             obs = self.eval_env.reset()
@@ -89,13 +89,17 @@ class Workspace(object):
                 episode_reward += reward
                 episode_step += 1
 
-            average_episode_reward += episode_reward[0]
+            average_episode_reward += episode_reward
             average_episode_length += episode_step
             self.video_recorder.save(f'{self.step}.mp4')
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
-        self.logger.log('eval/episode_reward', average_episode_reward,
+        self.logger.log('eval/episode_reward', average_episode_reward[0],
                         self.step)
+        for i in range(self.num_tasks):
+            self.logger.log(f'eval/episode_reward_{i}',
+                            average_episode_reward[i], self.step)
+
         self.logger.log('eval/episode_length', average_episode_length,
                         self.step)
         self.logger.dump(self.step, ty='eval')
@@ -105,6 +109,10 @@ class Workspace(object):
         episode_reward = np.zeros(self.num_tasks, dtype=np.float32)
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
+            if episode_step % self.cfg.switch_task_frequency == 0:
+                #task_id = np.random.randint(0, self.num_tasks)
+                task_id = self.num_tasks - 1
+
             if done:
                 if self.step > 0:
                     fps = episode_step / (time.time() - start_time)
@@ -117,15 +125,15 @@ class Workspace(object):
 
                 self.logger.log('train/episode_reward', episode_reward[0],
                                 self.step)
-                self.logger.log('train/episode_total_reward',
-                                episode_reward.mean(), self.step)
+                for i in range(self.num_tasks):
+                    self.logger.log(f'train/episode_reward_{i}',
+                                    episode_reward[i], self.step)
 
                 obs = self.env.reset()
                 done = False
                 episode_reward = np.zeros(self.num_tasks, dtype=np.float32)
                 episode_step = 0
                 episode += 1
-                task_id = np.random.randint(0, self.num_tasks)
 
                 self.logger.log('train/episode', episode, self.step)
 
@@ -138,9 +146,6 @@ class Workspace(object):
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:
                 self.agent.save(self.model_dir, self.step)
-
-            if episode_step % self.cfg.switch_task_frequency == 0:
-                task_id = np.random.randint(0, self.num_tasks)
 
             # sample action for data collection
             if self.step < self.cfg.num_seed_steps:
