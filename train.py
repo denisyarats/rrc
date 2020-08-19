@@ -40,10 +40,12 @@ class Workspace(object):
 
         initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, initializer, cfg.seed)
+                             cfg.episode_length, initializer, cfg.seed,
+                             eval=False)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                                   cfg.episode_length, initializer,
-                                  cfg.seed + 1)
+                                  cfg.seed + 1,
+                                  eval=True)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space

@@ -36,7 +36,8 @@ class Curriculum(ReachEnv):
                 visualization=True,
                 episode_length=move_cube.episode_length,
                 buffer_capacity=1000, R_min=20., R_max=480.,
-                new_goal_freq=2, n_random_actions=0):
+                new_goal_freq=2, n_random_actions=10,
+                eval = False):
         super().__init__(initializer, action_type, frameskip, visualization, episode_length)
 
         self.new_goal_freq = new_goal_freq
@@ -56,10 +57,14 @@ class Curriculum(ReachEnv):
                                                 R_min,
                                                 R_max
                                                 )
+
+        self.eval = eval
         return
 
     def reset(self):
-        print('buff_len', len(self.curriculum_buffer))
+        if self.eval:
+            return super().reset()
+
         # store to buffer
         if len(self.curriculum_buffer) > 0:
             self.curriculum_buffer.add(self.start, self.goal, self.ep_reward)
@@ -80,7 +85,6 @@ class Curriculum(ReachEnv):
         else:
             # sample goal from buffer and add a few random actions
             start, goal = self.curriculum_buffer.sample()
-            print(start)
             self.goal = goal
 
             # reset simulation
@@ -110,6 +114,9 @@ class Curriculum(ReachEnv):
         return self._create_observation(0)
 
     def step(self, action):
+        if self.eval:
+            return super().step(action)
+
         observation, reward, is_done, info = super().step(action)
         self.ep_reward += reward
         return observation, reward, is_done, info

@@ -16,7 +16,7 @@ def make_initializer(difficulty, fixed):
 
 
 def make(env_name, action_type, action_repeat, episode_length, initializer,
-         seed):
+         seed, eval):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -31,7 +31,8 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
                    action_type=action_type,
                    frameskip=action_repeat,
                    visualization=False,
-                   episode_length=episode_length)
+                   episode_length=episode_length,
+                   eval=eval)
 
     env.seed(seed)
 
