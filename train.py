@@ -163,6 +163,7 @@ class Workspace(object):
                     self.agent.update(self.replay_buffer, self.logger,
                                       self.step)
 
+            #import ipdb; ipdb.set_trace()
             next_obs, reward, done, info = self.env.step(action)
             episode_reward += reward
 

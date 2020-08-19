@@ -163,8 +163,8 @@ class MultiCubeEnv(gym.GoalEnv):
 
         self.tasks = [
             #ObjectToTargetTask(), # this is the main task
-            #AnyFingerToObjectTask(),
             AnyFingerToObjectTask(),
+            #AnyFingerToObjectTask(),
             #AnyFingerToObjectTask(),
             #FingerToObjectTask(finger_idx=0),
             #FingerToObjectTask(finger_idx=1),

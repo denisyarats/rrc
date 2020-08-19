@@ -148,6 +148,7 @@ class DDPGAgent(object):
     def update_critic(self, obs, action, reward, next_obs, discount, logger,
                       step):
 
+        
         with torch.no_grad():
             dist = self.actor(next_obs)
             next_actions = dist.rsample()
@@ -187,8 +188,68 @@ class DDPGAgent(object):
         self.critic_optimizer.step()
 
         self.critic.log(logger, step)
+        
+    def update_critic2(self, obs, action, reward, next_obs, discount, logger,
+                      step):
+
+        num_tasks = reward.shape[1]
+        #critic_loss = 0
+        for task_id in range(num_tasks):
+            
+            with torch.no_grad():
+                dist = self.actor(next_obs)
+                next_action = dist.rsample()[:, task_id]
+                target_Q1, target_Q2 = self.critic_target(next_obs, next_action)
+                
+                target_V = torch.min(target_Q1, target_Q2)
+                target_Q = reward[:, task_id] + (discount[:, task_id] * target_V[:, task_id])
+                
+            Q1, Q2 = self.critic(obs, action)
+            critic_loss = F.mse_loss(Q1[:, task_id], target_Q) + F.mse_loss(Q2[:, task_id], target_Q)
+            
+            self.critic_optimizer.zero_grad()
+            critic_loss.backward()
+            self.critic_optimizer.step()
+
+        #critic_loss /= num_tasks
+        #logger.log('train_critic/target_q1', target_Q1[:, 0].mean(), step)
+        #logger.log('train_critic/target_q2', target_Q2[:, 0].mean(), step)
+        #logger.log('train_critic/q', target_Q[:, 0].mean(), step)
+        #logger.log('train_critic/v', target_V[:, 0].mean(), step)
+
+
+        #logger.log('train_critic/q1', Q1[:, 0].mean(), step)
+        #logger.log('train_critic/q2', Q2[:, 0].mean(), step)
+        logger.log('train_critic/loss', critic_loss, step)
+
+        # Optimize the critic
+        
+
+        self.critic.log(logger, step)
+        
+    def update_actor2(self, obs, logger, step):
+        num_tasks = 2
+        for task_id in range(num_tasks):
+            dist = self.actor(obs)
+            action = dist.rsample()[:, task_id]
+
+            Q1, Q2 = self.critic(obs, action)
+            Q = torch.min(Q1[:, task_id], Q2[:, task_id])
+
+            actor_loss = -Q.mean()
+
+            logger.log('train_actor/loss', actor_loss, step)
+            #logger.log('train_actor/entropy', -log_prob.mean(), step)
+
+            # optimize the actor
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+
+        self.actor.log(logger, step)
 
     def update_actor(self, obs, logger, step):
+        #import ipdb; ipdb.set_trace()
         dist = self.actor(obs)
         actions = dist.rsample()
         num_tasks = actions.shape[1]

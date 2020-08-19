@@ -4,7 +4,7 @@ action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
 fixed_env: true
-episode_length: 1000
+episode_length: 500
 # train
 num_train_steps: 1000000
 num_seed_steps: 1000
@@ -24,8 +24,8 @@ device: cuda
 # saving
 save_frequency: 100000
 # global params
-lr: 5e-4
-batch_size: 1024
+lr: 1e-3
+batch_size: 256
 parameterization: clipped
 actor_stddev: 0.2
 hidden_depth: 2
