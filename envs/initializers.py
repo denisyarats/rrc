@@ -16,6 +16,9 @@ class RandomInitializer:
         """
         self.difficulty = difficulty
 
+    def reset(self):
+        pass
+
     def get_initial_state(self):
         """Get a random initial object pose (always on the ground)."""
         return move_cube.sample_goal(difficulty=-1)
@@ -67,4 +70,50 @@ class FixedInitializer:
 
     def get_goal(self):
         """Get the goal that was set in the constructor."""
+        return self.goal
+
+
+class CurriculumInitializer:
+    """Initializer that samples random initial states and goals."""
+    def __init__(self, init_p, max_step, difficulty):
+        """Initialize.
+
+        Args:
+            difficulty (int):  Difficulty level for sampling goals.
+        """
+        assert init_p > 0.0 and init_p < 1.0
+        assert max_step > 0
+        assert difficulty == 1
+        self.difficulty = difficulty
+        self.init_p = init_p
+        self.max_step = max_step
+        self.p = init_p
+        self.diameter = 2 * move_cube._max_cube_com_distance_to_center
+
+    def update(self, step):
+        self.p = min(1.0, step / self.max_step)
+
+    def reset(self):
+        self.goal = move_cube.sample_goal(difficulty=self.difficulty)
+        move_cube.validate_goal(self.goal)
+
+        delta = 1.0 - self.init_p
+        max_distance = self.diameter * (self.init_p + delta * self.p)
+
+        while True:
+            self.initial_state = move_cube.sample_goal(difficulty=-1)
+            dist = np.linalg.norm(self.goal.position -
+                                  self.initial_state.position)
+            if dist < max_distance:
+                break
+
+        self.distance = dist
+        move_cube.validate_goal(self.initial_state)
+
+    def get_initial_state(self):
+        """Get a random initial object pose (always on the ground)."""
+        return self.initial_state
+
+    def get_goal(self):
+        """Get a random goal depending on the difficulty."""
         return self.goal

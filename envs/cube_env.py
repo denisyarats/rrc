@@ -19,7 +19,7 @@ class CubeEnv(gym.GoalEnv):
     def __init__(
         self,
         initializer,
-        action_type=ActionType.POSITION,
+        action_type=ActionType.TORQUE,
         frameskip=1,
         visualization=False,
         episode_length=move_cube.episode_length,
@@ -235,6 +235,7 @@ class CubeEnv(gym.GoalEnv):
 
         # initialize simulation
         initial_robot_position = TriFingerPlatform.spaces.robot_position.default
+        self.initializer.reset()
         initial_object_pose = self.initializer.get_initial_state()
         goal_object_pose = self.initializer.get_goal()
 

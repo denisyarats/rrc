@@ -15,6 +15,14 @@ def make_initializer(difficulty, fixed):
     return initializer
 
 
+def make_curriculum(init_p, max_step, difficulty):
+    return initializers.CurriculumInitializer(init_p, max_step, difficulty)
+
+
+def make_eval_initializer(difficulty):
+    return initializers.RandomInitializer(difficulty=difficulty)
+
+
 def make(env_name, action_type, action_repeat, episode_length, initializer,
          seed):
     assert action_type in ['position', 'torque', 'both']

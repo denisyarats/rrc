@@ -38,11 +38,15 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
 
-        initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
+        self.train_initializer = envs.make_curriculum(cfg.curriculum_init_p,
+                                                      cfg.curriculum_max_step,
+                                                      cfg.difficulty)
+        self.eval_initializer = envs.make_eval_initializer(cfg.difficulty)
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, initializer, cfg.seed)
+                             cfg.episode_length, self.train_initializer,
+                             cfg.seed)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, initializer,
+                                  cfg.episode_length, self.eval_initializer,
                                   cfg.seed + 1)
 
         obs_space = self.env.observation_space
@@ -111,6 +115,7 @@ class Workspace(object):
                 self.logger.log('train/episode_reward', episode_reward,
                                 self.step)
 
+                self.train_initializer.update(self.step)
                 obs = self.env.reset()
                 done = False
                 episode_reward = 0
@@ -118,6 +123,10 @@ class Workspace(object):
                 episode += 1
 
                 self.logger.log('train/episode', episode, self.step)
+                self.logger.log('train/curriculum_p', self.train_initializer.p,
+                                self.step)
+                self.logger.log('train/curriculum_distance',
+                                self.train_initializer.distance, self.step)
 
             # evaluate agent periodically
             if self.step % (self.cfg.eval_frequency //
