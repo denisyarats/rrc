@@ -167,11 +167,7 @@ class CubeEnv(gym.GoalEnv):
 
         return rewards.tolerance(dist, bounds=(0, radius), margin=radius)
 
-        #return -move_cube.evaluate_state(
-        #    move_cube.Pose.from_dict(desired_goal),
-        #    move_cube.Pose.from_dict(achieved_goal),
-        #    info["difficulty"],
-        #)
+
     def step(self, action):
         """Run one timestep of the environment's dynamics.
 

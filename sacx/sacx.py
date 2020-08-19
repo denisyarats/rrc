@@ -353,6 +353,7 @@ class SACXAgent(object):
                 obs, action, reward, next_obs, discount = \
                     multi_replay_buffer.sample(self.batch_size, self.discount,
                                                     self.nstep, task_id)
+                #print(reward.shape, reward.mean())
 
                 loggers[task_id].log('train/batch_reward', reward.mean(), step)
 

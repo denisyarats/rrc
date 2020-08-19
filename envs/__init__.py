@@ -76,7 +76,28 @@ def make_multi(env_name, task_list, action_type, action_repeat, episode_length,
 
 from gym.envs.registration import register
 
-register(
+def force_register(id, entry_point, force=True):
+    env_specs = gym.envs.registry.env_specs
+    if id in env_specs.keys():
+        if not force:
+            return
+        del env_specs[id]
+    register(
+        id=id,
+        entry_point=entry_point,
+    )
+
+force_register(
     id="multitask-v1",
-    entry_point="rrc.envs.multi_env:MultiTaskEnv",
+    entry_point="rrc.envs.multi_env:MultiTaskEnv"
+)
+
+force_register(
+    id="cube-v1",
+    entry_point="rrc.envs.cube_env:CubeEnv",
+)
+
+force_register(
+    id="reach-v1",
+    entry_point="rrc.envs.reach_env:ReachEnv",
 )

@@ -28,6 +28,7 @@ class MultiReplayBuffer(object):
         return buff.capacity if buff.full else buff.idx
 
     def add(self, obs, action, reward, next_obs, done, log_prob=None):
+        print(reward.shape, reward.mean())
         for i in range(self.n_tasks):
             self.replay_buffer_list[i].add(obs[i], action, reward[i],
                                                 next_obs[i], done, log_prob)

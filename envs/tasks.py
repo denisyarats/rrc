@@ -27,6 +27,9 @@ class Task:
         return self.initializer.get_goal()
 
 
+class RandomReach(Task):
+    
+
 
 class AnyFingerToObject(Task):
     def __init__(self, initializer):
