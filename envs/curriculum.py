@@ -6,13 +6,15 @@ import numpy as np
 from dm_control.utils import rewards
 
 from rrc_simulation import TriFingerPlatform
-from rrc_simulation import visual_objects
+from rrc_simulation import camera, visual_objects
 from rrc_simulation.tasks import move_cube
 
 import pybullet
 
 from rrc.envs.reach_env import ReachEnv
 from rrc.envs import ActionType
+
+from matplotlib import pyplot as plt
 
 """
 Curriculum strategy:
@@ -35,7 +37,7 @@ class Curriculum(ReachEnv):
                 frameskip=1,
                 visualization=True,
                 episode_length=move_cube.episode_length,
-                buffer_capacity=1000, R_min=20., R_max=480.,
+                buffer_capacity=1000, R_min=0.2, R_max=0.9,
                 new_goal_freq=2, n_random_actions=10,
                 eval = False):
         super().__init__(initializer, action_type, frameskip, visualization, episode_length)
@@ -48,14 +50,14 @@ class Curriculum(ReachEnv):
         # goal state in xyz of end effector
         self.goal_shape = (3,3)
 
-        self.R_min = R_min
-        self.R_max = R_max
+        self.R_min = R_min * episode_length
+        self.R_max = R_max * episode_length
 
         self.curriculum_buffer = CurriculumBuffer(self.start_shape,
                                                 self.goal_shape,
                                                 buffer_capacity,
-                                                R_min,
-                                                R_max
+                                                self.R_min,
+                                                self.R_max
                                                 )
 
         self.eval = eval
@@ -70,6 +72,7 @@ class Curriculum(ReachEnv):
             self.curriculum_buffer.add(self.start, self.goal, self.ep_reward)
         self.ep_reward = 0
 
+        #print('len', len(self.curriculum_buffer))
 
         # reset start and goal
         if len(self.curriculum_buffer) % self.new_goal_freq == 0:
@@ -86,7 +89,6 @@ class Curriculum(ReachEnv):
             # sample goal from buffer and add a few random actions
             start, goal = self.curriculum_buffer.sample()
             self.goal = goal
-
             # reset simulation
             del self.platform
             self.platform = TriFingerPlatform(initial_robot_position=start)
@@ -109,6 +111,17 @@ class Curriculum(ReachEnv):
                     position=self.goal[i],
                     orientation=[0,0,0,1],
                 )
+
+        # c = camera.Camera(
+        #         camera_position=[0.2496, 0.2458, 0.4190],
+        #         camera_orientation=[0.3760, 0.8690, -0.2918, -0.1354],
+        #         image_size=(256, 256),
+        #     )
+        # plt.imshow(c.get_image())
+        # plt.show()
+
+        #print(self.compute_reward(self._create_observation(0), {}))
+
         self.info = {}
         self.step_count = 0
         return self._create_observation(0)
