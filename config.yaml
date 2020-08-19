@@ -1,5 +1,5 @@
 # env
-env: reach
+env: curriculum_reach
 action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
@@ -7,7 +7,7 @@ fixed_env: false
 episode_length: 500
 # train
 num_train_steps: 1000000
-num_seed_steps: 1000
+num_seed_steps: 10
 num_train_iters: 1
 replay_buffer_capacity: ${num_train_steps}
 seed: 1

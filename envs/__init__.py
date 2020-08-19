@@ -101,3 +101,8 @@ force_register(
     id="reach-v1",
     entry_point="rrc.envs.reach_env:ReachEnv",
 )
+
+force_register(
+    id="curriculum_reach-v1",
+    entry_point="rrc.envs.curriculum:Curriculum",
+)

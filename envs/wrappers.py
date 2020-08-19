@@ -4,6 +4,9 @@ import gym
 
 def flat_space(space, value=None):
     if type(space) == gym.spaces.Box:
+        # temporary hack
+        if type(value) == list:
+            value = np.array(value)
         yield (space, value)
     else:
         assert type(space) == gym.spaces.Dict

@@ -21,9 +21,9 @@ class ReachEnv(gym.GoalEnv):
     def __init__(
         self,
         initializer=None,
-        action_type=ActionType.POSITION,
+        action_type=ActionType.TORQUE,
         frameskip=1,
-        visualization=False,
+        visualization=True,
         episode_length=move_cube.episode_length,
     ):
         """Initialize.
@@ -299,6 +299,6 @@ class ReachEnv(gym.GoalEnv):
             pos[i] = pybullet.calculateInverseKinematics(
                                 robot_id, tip_id, target_locs[i],
                                 maxNumIterations=1000)[3*i:3*i+3]
-
-        self.platform.simfinger.reset_finger_positions_and_velocities(pos.flatten())
-        return
+        joint_angles = pos.flatten()
+        self.platform.simfinger.reset_finger_positions_and_velocities(joint_angles)
+        return joint_angles
