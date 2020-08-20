@@ -38,7 +38,7 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
 
-        if cfg.env = 'curriculum_reach':
+        if cfg.env == 'curriculum_reach':
             initializer = None
             self.env = envs.make_curr(cfg.env, cfg.action_type, cfg.action_repeat,
                                  cfg.episode_length, initializer, cfg.seed,
