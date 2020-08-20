@@ -14,7 +14,7 @@ import pybullet
 from rrc.envs.reach_env import ReachEnv
 from rrc.envs import ActionType
 
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
 """
 Curriculum strategy:
