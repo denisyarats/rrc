@@ -4,8 +4,13 @@ action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
 fixed_env: false
-episode_length: 100
-
+episode_length: 200
+# curriculum
+curr_buffer_capacity: 1000
+R_min: 0.2
+R_max: 0.9
+new_goal_freq: 2
+n_random_actions: 20
 # train
 num_train_steps: 1000000
 num_seed_steps: 1000

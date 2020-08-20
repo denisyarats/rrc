@@ -38,7 +38,7 @@ class Curriculum(ReachEnv):
                 visualization=True,
                 episode_length=move_cube.episode_length,
                 buffer_capacity=1000, R_min=0.2, R_max=0.9,
-                new_goal_freq=2, n_random_actions=10,
+                new_goal_freq=2, n_random_actions=20,
                 eval = False):
         super().__init__(initializer, action_type, frameskip, visualization, episode_length)
 
@@ -71,8 +71,6 @@ class Curriculum(ReachEnv):
         if len(self.curriculum_buffer) > 0:
             self.curriculum_buffer.add(self.start, self.goal, self.ep_reward)
         self.ep_reward = 0
-
-        #print('len', len(self.curriculum_buffer))
 
         # reset start and goal
         if len(self.curriculum_buffer) % self.new_goal_freq == 0:
@@ -111,16 +109,6 @@ class Curriculum(ReachEnv):
                     position=self.goal[i],
                     orientation=[0,0,0,1],
                 )
-
-        # c = camera.Camera(
-        #         camera_position=[0.2496, 0.2458, 0.4190],
-        #         camera_orientation=[0.3760, 0.8690, -0.2918, -0.1354],
-        #         image_size=(256, 256),
-        #     )
-        # plt.imshow(c.get_image())
-        # plt.show()
-
-        #print(self.compute_reward(self._create_observation(0), {}))
 
         self.info = {}
         self.step_count = 0

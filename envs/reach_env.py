@@ -97,11 +97,14 @@ class ReachEnv(gym.GoalEnv):
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
         """
-        dist = np.linalg.norm(observation['desired_goal'] -
-                                observation['achieved_goal'])
-        return rewards.tolerance(dist, bounds=(0, 0.025),
-                                    margin=0.1, value_at_margin=0.2,
-                                    sigmoid='long_tail')
+        reward = 0.
+        for i in range(3):
+            dist = np.linalg.norm(observation['desired_goal'][3*i:3*i+3] -
+                                    observation['achieved_goal'][3*i:3*i+3])
+            reward += rewards.tolerance(dist, bounds=(0, 0.025),
+                                        margin=0.1, value_at_margin=0.2,
+                                        sigmoid='long_tail')
+        return reward / 3.
 
 
     def step(self, action):

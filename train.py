@@ -38,13 +38,22 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
 
-        initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
-        self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
+        # initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)
+        # self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
+        #                      cfg.episode_length, initializer, cfg.seed)
+        # self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
+        #                           cfg.episode_length, initializer,
+        #                           cfg.seed + 1)
+        initializer = None
+        self.env = envs.make_curr(cfg.env, cfg.action_type, cfg.action_repeat,
                              cfg.episode_length, initializer, cfg.seed,
+                             cfg.curr_buffer_capacity, cfg.R_min, cfg.R_max,
+                             cfg.new_goal_freq, cfg.n_random_actions,
                              eval=False)
-        self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, initializer,
-                                  cfg.seed + 1,
+        self.eval_env = envs.make_curr(cfg.env, cfg.action_type, cfg.action_repeat,
+                                  2*cfg.episode_length, initializer,cfg.seed + 1,
+                                  cfg.curr_buffer_capacity, cfg.R_min, cfg.R_max,
+                                  cfg.new_goal_freq, cfg.n_random_actions,
                                   eval=True)
 
         obs_space = self.env.observation_space
