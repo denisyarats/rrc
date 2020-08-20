@@ -17,6 +17,7 @@ import utils
 from logger import Logger
 from replay_buffer import ReplayBuffer
 from video import VideoRecorder
+from collections import defaultdict
 
 torch.backends.cudnn.benchmark = True
 
@@ -77,33 +78,45 @@ class Workspace(object):
     def evaluate(self):
         average_episode_reward = 0
         average_episode_length = 0
+        average_reward_infos = defaultdict(float)
         for episode in range(self.cfg.num_eval_episodes):
             obs = self.eval_env.reset()
             self.video_recorder.init(enabled=(episode == 0))
             done = False
             episode_reward = 0
             episode_step = 0
+            reward_infos = defaultdict(float)
             while not done:
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(obs, sample=False)
                 obs, reward, done, info = self.eval_env.step(action)
+                for k, v in info.items():
+                    if k.startswith('reward_'):
+                        reward_infos[k] += v
                 self.video_recorder.record()
                 episode_reward += reward
                 episode_step += 1
 
-            average_episode_reward += episode_reward
+            average_episode_reward += episode_reward / self.cfg.episode_length
             average_episode_length += episode_step
+            for k, v in reward_infos.items():
+                average_reward_infos[k] += v / self.cfg.episode_length
             self.video_recorder.save(f'{self.step}.mp4')
+
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
         self.logger.log('eval/episode_reward', average_episode_reward,
                         self.step)
         self.logger.log('eval/episode_length', average_episode_length,
                         self.step)
+        for k, v in average_reward_infos.items():
+            self.logger.log(f'eval/{k}', v / self.cfg.num_eval_episodes,
+                            self.step)
         self.logger.dump(self.step, ty='eval')
 
     def run(self):
         episode, episode_reward, episode_step, done = 0, 0, 0, True
+        reward_infos = defaultdict(float)
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
             # evaluate agent periodically
@@ -126,8 +139,12 @@ class Workspace(object):
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
-                self.logger.log('train/episode_reward', episode_reward,
+                self.logger.log('train/episode_reward',
+                                episode_reward / self.cfg.episode_length,
                                 self.step)
+                for k, v in reward_infos.items():
+                    self.logger.log(f'train/{k}', v / self.cfg.episode_length,
+                                    self.step)
 
                 self.train_initializer.update(self.step)
                 obs = self.env.reset()
@@ -135,6 +152,7 @@ class Workspace(object):
                 episode_reward = 0
                 episode_step = 0
                 episode += 1
+                reward_infos = defaultdict(float)
 
                 self.logger.log('train/episode', episode, self.step)
                 self.train_initializer.log(self.logger, self.step)
@@ -159,6 +177,9 @@ class Workspace(object):
 
             next_obs, reward, done, info = self.env.step(action)
             episode_reward += reward
+            for k, v in info.items():
+                if k.startswith('reward_'):
+                    reward_infos[k] += v
 
             self.replay_buffer.add(obs, action, reward, next_obs, done)
 
