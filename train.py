@@ -38,10 +38,14 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
 
-        self.train_initializer = envs.make_curriculum(cfg.curriculum_init_p,
+        self.train_initializer = envs.make_initializer(cfg.train_initializer,
+                                                       cfg.curriculum_init_p,
+                                                       cfg.curriculum_max_step,
+                                                       cfg.difficulty)
+        self.eval_initializer = envs.make_initializer(cfg.eval_initializer,
+                                                      cfg.curriculum_init_p,
                                                       cfg.curriculum_max_step,
                                                       cfg.difficulty)
-        self.eval_initializer = envs.make_eval_initializer(cfg.difficulty)
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                              cfg.episode_length, self.train_initializer,
                              cfg.seed)
@@ -102,6 +106,16 @@ class Workspace(object):
         episode, episode_reward, episode_step, done = 0, 0, 0, True
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
+            # evaluate agent periodically
+            if self.step % (self.cfg.eval_frequency //
+                            self.cfg.action_repeat) == 0:
+                self.logger.log('eval/episode', episode, self.step)
+                self.evaluate()
+
+            if self.step % (self.cfg.save_frequency //
+                            self.cfg.action_repeat) == 0:
+                self.agent.save(self.model_dir, self.step)
+
             if done:
                 if self.step > 0:
                     fps = episode_step / (time.time() - start_time)
@@ -123,20 +137,9 @@ class Workspace(object):
                 episode += 1
 
                 self.logger.log('train/episode', episode, self.step)
-                self.logger.log('train/curriculum_p', self.train_initializer.p,
-                                self.step)
-                self.logger.log('train/curriculum_distance',
-                                self.train_initializer.distance, self.step)
-
-            # evaluate agent periodically
-            if self.step % (self.cfg.eval_frequency //
-                            self.cfg.action_repeat) == 0:
-                self.logger.log('eval/episode', episode, self.step)
-                self.evaluate()
-
-            if self.step % (self.cfg.save_frequency //
-                            self.cfg.action_repeat) == 0:
-                self.agent.save(self.model_dir, self.step)
+                self.train_initializer.log(self.logger, self.step)
+                #self.logger.log('train/curriculum_p', self.train_initializer.p, self.step)
+                #self.logger.log('train/curriculum_distance', self.train_initializer.distance, self.step)
 
             # sample action for data collection
             if self.step < self.cfg.num_seed_steps:

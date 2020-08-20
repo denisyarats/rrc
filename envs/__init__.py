@@ -7,20 +7,18 @@ from rrc_simulation.gym_wrapper.envs import cube_env
 ActionType = cube_env.ActionType
 
 
-def make_initializer(difficulty, fixed):
-    if fixed:
-        initializer = initializers.FixedInitializer(difficulty)
+def make_initializer(name, init_p, max_step, difficulty):
+    if name == 'fixed':
+        return initializers.FixedInitializer(difficulty)
+    elif name == 'fixed_goal':
+        return initializers.FixedGoalInitializer(difficulty)
+    elif name == 'goal_curriculum':
+        return initializers.GoalCurriculumInitializer(init_p, max_step,
+                                                      difficulty)
+    elif name == 'random':
+        return initializers.RandomInitializer(difficulty)
     else:
-        initializer = initializers.RandomInitializer(difficulty=difficulty)
-    return initializer
-
-
-def make_curriculum(init_p, max_step, difficulty):
-    return initializers.CurriculumInitializer(init_p, max_step, difficulty)
-
-
-def make_eval_initializer(difficulty):
-    return initializers.RandomInitializer(difficulty=difficulty)
+        assert False, f'wrong initializer: {name}'
 
 
 def make(env_name, action_type, action_repeat, episode_length, initializer,

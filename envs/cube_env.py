@@ -118,11 +118,13 @@ class CubeEnv(gym.GoalEnv):
         """
         radius = move_cube._cube_3d_radius
         robot_id = self.platform.simfinger.finger_id
-        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
+        finger_ids = self.platform.simfinger.pybullet_tip_link_indices[:1]
 
         # compute reward to see if the object reached the target
-        object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
-        target_pos = move_cube.Pose.from_dict(observation['desired_goal']).position
+        object_pos = move_cube.Pose.from_dict(
+            observation['achieved_goal']).position
+        target_pos = move_cube.Pose.from_dict(
+            observation['desired_goal']).position
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.2 * radius),
@@ -130,48 +132,38 @@ class CubeEnv(gym.GoalEnv):
                                      value_at_margin=0.2,
                                      sigmoid='long_tail')
 
-
         # compute reward to see that each fingert is close to the cube
         grasp = 0
-        hand_away = 0
+        #hand_away = 0
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(grasp, rewards.tolerance(finger_to_object,
+            grasp += rewards.tolerance(finger_to_object,
                                        bounds=(0, radius),
-                                       margin=2 * radius,
-                                       value_at_margin=0.2,
-                                       sigmoid='long_tail'))
+                                       margin=radius,
+                                       sigmoid='long_tail')
 
-            finger_to_target = np.linalg.norm(finger_pos - target_pos)
-            hand_away += rewards.tolerance(finger_to_target,
-                                           bounds=(3 * radius, np.inf),
-                                           margin=4 * radius,
-                                           sigmoid='long_tail')
+            #finger_to_target = np.linalg.norm(finger_pos - target_pos)
+            #hand_away += rewards.tolerance(finger_to_target,
+            #                               bounds=(4 * radius, np.inf),
+            #                               margin=3 * radius,
+            #                               sigmoid='long_tail')
 
         #import ipdb; ipdb.set_trace()
         grasp /= len(finger_ids)
-        hand_away /= len(finger_ids)
+        #hand_away /= len(finger_ids)
 
-        grasp_or_hand_away = grasp #* (1 - in_place) + hand_away * in_place
+        #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
         in_place_weight = 10.0
 
-        return (grasp_or_hand_away +
-                in_place_weight * in_place) / (1.0 + in_place_weight)
+        info['reward_grasp'] = grasp
+        #info['reward_hand_away'] = hand_away
+        #info['reward_grasp_or_hand_away'] = grasp_or_hand_away
+        info['reward_in_place'] = in_place
 
-        finger_pos = pybullet.getLinkState(robot_id, finger_tip_id)[0]
-        target_pos = move_cube.Pose.from_dict(observation['desired_goal'])
+        reward = (grasp + in_place_weight * in_place) / (1.0 + in_place_weight)
+        return reward
 
-        dist = np.linalg.norm(finger_pos - target_pos.position)
-        radius = move_cube._CUBE_WIDTH
-
-        return rewards.tolerance(dist, bounds=(0, radius), margin=radius)
-
-        #return -move_cube.evaluate_state(
-        #    move_cube.Pose.from_dict(desired_goal),
-        #    move_cube.Pose.from_dict(achieved_goal),
-        #    info["difficulty"],
-        #)
     def step(self, action):
         """Run one timestep of the environment's dynamics.
 
