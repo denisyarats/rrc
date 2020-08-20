@@ -99,13 +99,13 @@ class ReachEnv(gym.GoalEnv):
         """
         reward = 0.
         for i in range(3):
-            dist = np.linalg.norm(observation['desired_goal'][3*i:3*i+3] -
-                                    observation['achieved_goal'][3*i:3*i+3])
+            dist = np.linalg.norm(observation['desired_goal'][i] -
+                                    observation['achieved_goal'][i])
             # reward += rewards.tolerance(dist, bounds=(0, 0.025),
             #                             margin=0.1, value_at_margin=0.2,
             #                             sigmoid='long_tail')
-            reward += rewards.tolerance(dist, bounds=(0, 0),
-                                        margin=0.05, value_at_margin=0.2,
+            reward += rewards.tolerance(dist, bounds=(0., 0.),
+                                        margin=0.05, value_at_margin=0.1,
                                         sigmoid='long_tail')
         return reward / 3.
 
@@ -177,6 +177,7 @@ class ReachEnv(gym.GoalEnv):
         self.platform = TriFingerPlatform(
             visualization=self.visualization,
             initial_robot_position=initial_robot_position,
+            initial_object_pose=move_cube.Pose(np.array([0,0,-1]))
         )
 
         self.goal = self._generate_pose_goal()
@@ -226,6 +227,7 @@ class ReachEnv(gym.GoalEnv):
             "desired_goal": self.goal,
             "achieved_goal": robot_xyz,
         }
+
         return observation
 
     def _gym_action_to_robot_action(self, gym_action):
