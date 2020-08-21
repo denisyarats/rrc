@@ -9,7 +9,7 @@ episode_length: 200
 curr_buffer_capacity: 10000
 R_min: 0.2
 R_max: 0.9
-new_goal_freq: 3
+new_goal_freq: 4
 target_task_freq: 10
 n_random_actions: 50
 # train
@@ -30,14 +30,14 @@ device: cuda
 # saving
 save_frequency: 100000
 # global params
-lr: 1e-3
-batch_size: 256
+lr: 1e-4
+batch_size: 128
 parameterization: clipped
 actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
-nstep: 1
-random_nstep: false
+nstep: 5
+random_nstep: true
 
 
 agent:

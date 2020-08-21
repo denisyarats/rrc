@@ -94,7 +94,7 @@ class Curriculum(ReachEnv):
             # reset simulation
             del self.platform
             self.platform = TriFingerPlatform(initial_robot_position=start,
-                                    initial_object_pose=move_cube.Pose(np.array([0,0,-1])))
+                                    initial_object_pose=move_cube.Pose(np.array([0,0,-10])))
             self.step_count = 0
             for i in range(self.n_random_actions):
                 super().step(self.action_space.sample())
@@ -106,7 +106,7 @@ class Curriculum(ReachEnv):
         self.platform = TriFingerPlatform(
             visualization=self.visualization,
             initial_robot_position=self.start,
-            initial_object_pose=move_cube.Pose(np.array([0,0,-1]))
+            initial_object_pose=move_cube.Pose(np.array([0,0,-10]))
         )
 
         for i in range(3):
