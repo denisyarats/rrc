@@ -38,24 +38,6 @@ class ReplayBuffer(object):
         self.full = self.full or self.idx == 0
 
     def sample(self, batch_size, discount, n):
-        assert n == 1
-        idxs = np.random.randint(0,
-                                 self.capacity if self.full else self.idx,
-                                 size=batch_size)
-
-        obses = self.obses[idxs]
-        next_obses = self.next_obses[idxs]
-
-        obses = torch.as_tensor(obses, device=self.device).float()
-        next_obses = torch.as_tensor(next_obses, device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
-        rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
-        discounts = np.ones((idxs.shape[0], 1), dtype=np.float32) * discount
-        discounts = torch.as_tensor(discounts, device=self.device)
-
-        return obses, actions, rewards, next_obses, discounts
-
-    def sample_n(self, batch_size, discount, n):
         assert n <= self.idx or self.full
         last_idx = (self.capacity if self.full else self.idx) - (n - 1)
         idxs = np.random.randint(0, last_idx, size=batch_size)
