@@ -59,6 +59,6 @@ register(
 )
 
 register(
-    id="cube-v1",
-    entry_point="envs.cube_env:CubeEnv",
+    id="task1-v1",
+    entry_point="envs.task_one_env:TaskOneEnv",
 )

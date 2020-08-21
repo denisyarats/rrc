@@ -14,7 +14,7 @@ from dm_control.utils import rewards
 from envs import ActionType
 
 
-class CubeEnv(gym.GoalEnv):
+class TaskOneEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
     def __init__(
         self,
@@ -40,6 +40,7 @@ class CubeEnv(gym.GoalEnv):
         # Basic initialization
         # ====================
 
+        assert initializer.difficulty == 1
         self.initializer = initializer
         self.action_type = action_type
         self.visualization = visualization
