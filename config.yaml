@@ -27,8 +27,8 @@ device: cuda
 # saving
 save_frequency: 100000
 # global params
-lr: 1e-3
-batch_size: 256
+lr: 1e-4
+batch_size: 128
 parameterization: clipped
 actor_stddev: 0.2
 hidden_depth: 2
