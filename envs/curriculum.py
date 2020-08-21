@@ -17,7 +17,7 @@ from rrc.envs import ActionType
 #from matplotlib import pyplot as plt
 
 """
-Curriculum strategy:
+Reverse curriculum strategy:
 
 1. init buffer of (start, goal) pairs with start=goal pairs
 Each iteration:
@@ -25,12 +25,12 @@ Each iteration:
     2. add random actions to move the start position
     3. add (start,goal) pairs to buffer if R_min < return < R_max
 
+based off of Florensa et al. https://arxiv.org/abs/1707.05300
 """
 
 
 class Curriculum(ReachEnv):
     """Curriculum over goals and initial states."""
-
     def __init__(self,
                 initializer=None,
                 action_type=ActionType.TORQUE,
