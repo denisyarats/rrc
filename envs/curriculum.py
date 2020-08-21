@@ -38,11 +38,13 @@ class Curriculum(ReachEnv):
                 visualization=True,
                 episode_length=move_cube.episode_length,
                 buffer_capacity=1000, R_min=0.2, R_max=0.9,
-                new_goal_freq=2, n_random_actions=20,
+                new_goal_freq=3, target_task_freq=10,
+                n_random_actions=50,
                 eval = False):
         super().__init__(initializer, action_type, frameskip, visualization, episode_length)
 
         self.new_goal_freq = new_goal_freq
+        self.target_task_freq = target_task_freq
         self.n_random_actions = n_random_actions
 
         # start state in joint angles
@@ -83,6 +85,8 @@ class Curriculum(ReachEnv):
             # this is a bit of a hack
             if len(self.curriculum_buffer) == 0:
                 self.curriculum_buffer.add(self.start, self.goal, self.R_min + 1)
+        elif len(self.curriculum_buffer) % self.target_task_freq == 0:
+            return super().reset()
         else:
             # sample goal from buffer and add a few random actions
             start, goal = self.curriculum_buffer.sample()

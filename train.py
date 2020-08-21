@@ -43,12 +43,14 @@ class Workspace(object):
             self.env = envs.make_curr(cfg.env, cfg.action_type, cfg.action_repeat,
                                  cfg.episode_length, initializer, cfg.seed,
                                  cfg.curr_buffer_capacity, cfg.R_min, cfg.R_max,
-                                 cfg.new_goal_freq, cfg.n_random_actions,
+                                 cfg.new_goal_freq, cfg.target_task_freq,
+                                 cfg.n_random_actions,
                                  eval=False)
             self.eval_env = envs.make_curr(cfg.env, cfg.action_type, cfg.action_repeat,
                                       2*cfg.episode_length, initializer,cfg.seed + 1,
                                       cfg.curr_buffer_capacity, cfg.R_min, cfg.R_max,
-                                      cfg.new_goal_freq, cfg.n_random_actions,
+                                      cfg.new_goal_freq, cfg.target_task_freq,
+                                      cfg.n_random_actions,
                                       eval=True)
         else:
             initializer = envs.make_initializer(cfg.difficulty, cfg.fixed_env)

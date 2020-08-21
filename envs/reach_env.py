@@ -101,10 +101,7 @@ class ReachEnv(gym.GoalEnv):
         for i in range(3):
             dist = np.linalg.norm(observation['desired_goal'][i] -
                                     observation['achieved_goal'][i])
-            # reward += rewards.tolerance(dist, bounds=(0, 0.025),
-            #                             margin=0.1, value_at_margin=0.2,
-            #                             sigmoid='long_tail')
-            reward += rewards.tolerance(dist, bounds=(0., 0.),
+            reward += rewards.tolerance(dist, bounds=(0., 0.01),
                                         margin=0.05, value_at_margin=0.1,
                                         sigmoid='long_tail')
         return reward / 3.

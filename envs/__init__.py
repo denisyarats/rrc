@@ -46,7 +46,8 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
 
 def make_curr(env_name, action_type, action_repeat, episode_length, initializer,
          seed,
-         curr_buffer_capacity, R_min, R_max, new_goal_freq, n_random_actions,
+         curr_buffer_capacity, R_min, R_max, new_goal_freq, target_task_freq,
+         n_random_actions,
          eval):
     assert action_type in ['position', 'torque', 'both']
 
@@ -67,6 +68,7 @@ def make_curr(env_name, action_type, action_repeat, episode_length, initializer,
                    R_min=R_min,
                    R_max=R_max,
                    new_goal_freq=new_goal_freq,
+                   target_task_freq=target_task_freq,
                    n_random_actions=n_random_actions,
                    eval=eval)
 
