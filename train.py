@@ -33,7 +33,6 @@ class Workspace(object):
         self.logger = Logger(self.work_dir,
                              save_tb=cfg.log_save_tb,
                              log_frequency=cfg.log_frequency_step,
-                             action_repeat=cfg.action_repeat,
                              agent=cfg.agent.name)
 
         utils.set_seed_everywhere(cfg.seed)
@@ -47,12 +46,10 @@ class Workspace(object):
                                                       cfg.curriculum_init_p,
                                                       cfg.curriculum_max_step,
                                                       cfg.difficulty)
-        self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, self.train_initializer,
-                             cfg.seed)
-        self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, self.eval_initializer,
-                                  cfg.seed + 1)
+        self.env = envs.make(cfg.env, cfg.action_type, cfg.episode_length,
+                             self.train_initializer, cfg.seed)
+        self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.episode_length,
+                                  self.eval_initializer, cfg.seed + 1)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -65,13 +62,13 @@ class Workspace(object):
         ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
-        self.replay_buffer = ReplayBuffer(obs_space.shape, action_space.shape,
-                                          cfg.replay_buffer_capacity,
-                                          self.device, cfg.random_nstep)
+        self.replay_buffer = ReplayBuffer(
+            obs_space.shape, action_space.shape,
+            cfg.replay_buffer_capacity * (1 + self.cfg.her_k), self.device,
+            cfg.random_nstep)
 
         self.video_recorder = VideoRecorder(
-            self.work_dir if cfg.save_video else None,
-            fps=cfg.video_fps // cfg.action_repeat)
+            self.work_dir if cfg.save_video else None, fps=cfg.video_fps)
 
         self.step = 0
 
@@ -120,13 +117,11 @@ class Workspace(object):
         start_time = time.time()
         while self.step < self.cfg.num_train_steps:
             # evaluate agent periodically
-            if self.step % (self.cfg.eval_frequency //
-                            self.cfg.action_repeat) == 0:
+            if self.step % (self.cfg.eval_frequency) == 0:
                 self.logger.log('eval/episode', episode, self.step)
                 self.evaluate()
 
-            if self.step % (self.cfg.save_frequency //
-                            self.cfg.action_repeat) == 0:
+            if self.step % (self.cfg.save_frequency) == 0:
                 self.agent.save(self.model_dir, self.step)
 
             if done:
@@ -138,6 +133,15 @@ class Workspace(object):
                         self.step,
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
+
+                    # relabel
+                    for i in range(self.cfg.episode_length):
+                        transitions = self.env.relabel_transition(
+                            i, self.cfg.her_k)
+                        for t in transitions:
+                            self.replay_buffer.add(t['obs'], t['action'],
+                                                   t['reward'], t['next_obs'],
+                                                   t['done'])
 
                 self.logger.log('train/episode_reward',
                                 episode_reward / self.cfg.episode_length,

@@ -96,7 +96,9 @@ class TaskOneEnv(gym.GoalEnv):
             object_state_space,
         })
 
-    def compute_reward(self, observation, info):
+        self.episode_transitions = []
+
+    def compute_reward(self, observation, info=None):
         """Compute the reward for the given achieved and desired goal.
 
         Args:
@@ -139,10 +141,12 @@ class TaskOneEnv(gym.GoalEnv):
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(grasp, rewards.tolerance(finger_to_object,
-                                       bounds=(0, 0.5 * cube_radius),
-                                       margin=arena_radius,
-                                       sigmoid='long_tail'))
+            grasp = max(
+                grasp,
+                rewards.tolerance(finger_to_object,
+                                  bounds=(0, 0.5 * cube_radius),
+                                  margin=arena_radius,
+                                  sigmoid='long_tail'))
 
             #finger_to_target = np.linalg.norm(finger_pos - target_pos)
             #hand_away += rewards.tolerance(finger_to_target,
@@ -157,10 +161,11 @@ class TaskOneEnv(gym.GoalEnv):
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
         in_place_weight = 10.0
 
-        info['reward_grasp'] = grasp
-        #info['reward_hand_away'] = hand_away
-        #info['reward_grasp_or_hand_away'] = grasp_or_hand_away
-        info['reward_in_place'] = in_place
+        if info is not None:
+            info['reward_grasp'] = grasp
+            #info['reward_hand_away'] = hand_away
+            #info['reward_grasp_or_hand_away'] = grasp_or_hand_away
+            info['reward_in_place'] = in_place
 
         reward = (grasp + in_place_weight * in_place) / (1.0 + in_place_weight)
         return reward
@@ -220,6 +225,16 @@ class TaskOneEnv(gym.GoalEnv):
 
         is_done = self.step_count == self.episode_length
 
+        transition = dict()
+        transition['obs'] = self.last_observation
+        self.last_observation = observation.copy()
+        transition['next_obs'] = self.last_observation
+        transition['reward'] = reward
+        transition['done'] = is_done
+        transition['action'] = action.copy()
+
+        self.episode_transitions.append(transition)
+
         return observation, reward, is_done, self.info
 
     def reset(self):
@@ -254,10 +269,40 @@ class TaskOneEnv(gym.GoalEnv):
         )
 
         self.info = {"difficulty": self.initializer.difficulty}
+        self.episode_transitions = []
 
         self.step_count = 0
 
-        return self._create_observation(0)
+        self.last_observation = self._create_observation(0).copy()
+
+        return self.last_observation
+
+    def relabel_transition(self, idx, k):
+        def relabel(source_idx, target_idx):
+            source = self.episode_transitions[source_idx].copy()
+            target = self.episode_transitions[target_idx]
+            source['obs']['desired_goal'] = target['obs'][
+                'achieved_goal'].copy()
+            source['next_obs']['desired_goal'] = target['obs'][
+                'achieved_goal'].copy()
+            source['reward'] = self.compute_reward(source['next_obs'])
+            return source
+
+        n = len(self.episode_transitions)
+        assert idx < n
+        if k == 0:
+            return []
+        if k == 1:
+            # take final state
+            return [relabel(idx, n - 1)]
+
+        transitions = []
+        if idx + 1 < n:
+            random_targets = np.random.randint(idx + 1, n, size=(k,))
+            for target_idx in random_targets:
+                transitions.append(relabel(idx, target_idx))
+
+        return transitions
 
     def seed(self, seed=None):
         """Sets the seed for this env’s random number generator.

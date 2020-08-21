@@ -1,7 +1,6 @@
 # env
 env: task1
 action_type: torque # torque or both
-action_repeat: 1
 difficulty: 1
 episode_length: 500
 # curriculum
@@ -35,6 +34,7 @@ hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
 random_nstep: true
+her_k: 0
 
 
 agent:

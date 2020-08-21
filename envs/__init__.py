@@ -21,7 +21,7 @@ def make_initializer(name, init_p, max_step, difficulty):
         assert False, f'wrong initializer: {name}'
 
 
-def make(env_name, action_type, action_repeat, episode_length, initializer,
+def make(env_name, action_type, episode_length, initializer,
          seed):
     assert action_type in ['position', 'torque', 'both']
 
@@ -35,7 +35,7 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
     env = gym.make(f'{env_name}-v1',
                    initializer=initializer,
                    action_type=action_type,
-                   frameskip=action_repeat,
+                   frameskip=1,
                    visualization=False,
                    episode_length=episode_length)
 
