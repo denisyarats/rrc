@@ -10,7 +10,7 @@ eval_initializer: random
 curriculum_max_step: 1000000
 curriculum_init_p: 0.0
 # david curriculum
-use_curriculum: false
+use_curriculum: true
 start_shape: (9,)
 goal_shape: (3,3)
 curriculum_buffer_capacity: 10000
@@ -33,7 +33,7 @@ log_frequency_step: 10000
 log_save_tb: true
 save_video: true
 video_fps: 50
-device: cuda
+device: cpu
 # saving
 save_frequency: 100000
 # global params
@@ -45,7 +45,7 @@ hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
 random_nstep: true
-retrace: true
+retrace: false
 
 
 agent:
