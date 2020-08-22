@@ -1,7 +1,9 @@
 from rrc_simulation.tasks import move_cube
 
 import numpy as np
+import ast
 
+import gym
 from dm_control.utils import rewards
 
 from rrc_simulation import TriFingerPlatform
@@ -10,7 +12,7 @@ from rrc_simulation.tasks import move_cube
 
 import pybullet
 
-from envs import ActionType
+from rrc_simulation.gym_wrapper.envs.cube_env import ActionType
 
 """
 Reverse curriculum strategy:
@@ -34,14 +36,18 @@ class Curriculum(gym.GoalEnv):
                 new_goal_freq=3, target_task_freq=10,
                 n_random_actions=50):
         self.env = env
+        self.action_space = self.env.action_space
+        self.observation_space = self.env.observation_space
+        self.reward_range = self.env.reward_range
+        self.metadata = self.env.metadata
 
         self.new_goal_freq = new_goal_freq
         self.target_task_freq = target_task_freq
         self.n_random_actions = n_random_actions
         self.buffer_capacity = buffer_capacity
 
-        self.start_shape = start_shape
-        self.goal_shape = goal_shape
+        self.start_shape = ast.literal_eval(start_shape)
+        self.goal_shape = ast.literal_eval(goal_shape)
 
         self.R_min = R_min * self.env.episode_length
         self.R_max = R_max * self.env.episode_length
@@ -67,7 +73,6 @@ class Curriculum(gym.GoalEnv):
 
     def reset_simulator(self, start, goal):
         raise NotImplementedError
-
 
     def reset(self):
         # store to buffer
@@ -99,7 +104,7 @@ class Curriculum(gym.GoalEnv):
             self.goal = goal
             self.reset_simulator(start, goal)
 
-            self.step_count = 0
+            self.env.step_count = 0
             for i in range(self.n_random_actions):
                 self.env.step(self.action_space.sample())
             t = self.env.platform.simfinger._t
@@ -108,9 +113,9 @@ class Curriculum(gym.GoalEnv):
         # reset simulation
         self.reset_simulator(self.start, self.goal)
 
-        self.info = {}
-        self.step_count = 0
-        return self._create_observation(0)
+        self.env.info = {}
+        self.env.step_count = 0
+        return self.env._create_observation(0)
 
     def step(self, action):
         observation, reward, is_done, info = self.env.step(action)
@@ -187,7 +192,7 @@ class ReachCurriculum(Curriculum):
                 new_goal_freq=3, target_task_freq=10,
                 n_random_actions=50):
         super().__init__(env, start_shape, goal_shape,
-                        buffer_capacity R_min, R_max,
+                        buffer_capacity, R_min, R_max,
                         new_goal_freq, target_task_freq,
                         n_random_actions)
         return
@@ -221,14 +226,14 @@ class ReachCurriculum(Curriculum):
 
     def _random_xyz(self):
         # sample uniform position in circle (https://stackoverflow.com/a/50746409)
-        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(random.random())
-        theta = random.uniform(0, 2 * np.pi)
+        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(np.random.random())
+        theta = np.random.uniform(0, 2 * np.pi)
 
         # x,y-position of the cube
         x = radius * np.cos(theta)
         y = radius * np.sin(theta)
 
-        z = random.uniform() * 0.1
+        z = np.random.uniform() * 0.1
 
         return np.array([x, y, z])
 

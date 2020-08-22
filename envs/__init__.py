@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 
-from envs import initializers, wrappers
+from envs import initializers, wrappers, curriculum
 from rrc_simulation.gym_wrapper.envs import cube_env
 
 ActionType = cube_env.ActionType
@@ -22,7 +22,11 @@ def make_initializer(name, init_p, max_step, difficulty):
 
 
 def make(env_name, action_type, action_repeat, episode_length, initializer,
-         seed):
+         seed,
+         use_curriculum=False, start_shape=None, goal_shape=None,
+         buffer_capacity=None, R_min=None, R_max=None,
+         new_goal_freq=None, target_task_freq=None,
+         n_random_actions=None):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -39,6 +43,18 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
                    visualization=False,
                    episode_length=episode_length)
 
+    if use_curriculum:
+        if env_name == 'reach':
+            env = curriculum.ReachCurriculum(env,
+                                start_shape=start_shape,
+                                goal_shape=goal_shape,
+                                buffer_capacity=buffer_capacity,
+                                R_min=R_min,
+                                R_max=R_max,
+                                new_goal_freq=new_goal_freq,
+                                target_task_freq=target_task_freq,
+                                n_random_actions=n_random_actions)
+
     env.seed(seed)
 
     env = wrappers.FlattenObservationWrapper(env)
@@ -49,7 +65,6 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
     assert np.all(action_space.high <= +1.0)
 
     return env
-
 
 from gym.envs.registration import register
 
