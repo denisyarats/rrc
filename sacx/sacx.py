@@ -17,11 +17,6 @@ Questions:
 - how do we choose tasks?
 """
 
-"""
-TODO:
-- multitask logging
-"""
-
 
 """
 This is a modification of DDPG to use multiple tasks along with a scheduler

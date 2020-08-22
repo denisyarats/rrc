@@ -197,3 +197,44 @@ def main(cfg):
 
 if __name__ == '__main__':
     main()
+
+
+
+    def sample_full_n(self, batch_size, discount, n, log_prob=True):
+        """returns tensors of size (batch_size, n, dim)"""
+        assert discount <= 1.0
+        assert n >= 1
+        assert n <= self.idx or self.full
+        last_idx = (self.capacity if self.full else self.idx) - (n - 1)
+        idxs = np.random.randint(0, last_idx, size=batch_size)
+        assert idxs.max() + n <= len(self)
+
+        obses, actions, rewards, next_obses, discounts, log_probs = [],[],[],[],[],[]
+        not_done = 1.0 - self.dones[idxs]
+        for i in range(n):
+            obses.append(torch.as_tensor(self.obses[idxs + i],
+                                device=self.device).float().unsqueeze(1))
+            next_obses.append(torch.as_tensor(self.next_obses[idxs + i],
+                                device=self.device).float().unsqueeze(1))
+            actions.append(torch.as_tensor(self.actions[idxs + i],
+                                device=self.device).unsqueeze(1))
+            rewards.append(torch.as_tensor(self.rewards[idxs + i],
+                                device=self.device).unsqueeze(1))
+            not_done *= (1.0 - self.dones[idxs+i])
+            discounts.append(torch.as_tensor(discount * not_done,
+                                device=self.device).unsqueeze(1))
+            if log_prob:
+                log_probs.append(torch.as_tensor(self.log_probs[idxs + i],
+                                    device=self.device).unsqueeze(1))
+
+        obses = torch.cat(obses, dim=1)
+        actions = torch.cat(actions, dim=1)
+        rewards = torch.cat(rewards, dim=1)
+        next_obses = torch.cat(next_obses, dim=1)
+        discounts = torch.cat(discounts, dim=1)
+
+        if not log_prob:
+            return obses, actions, rewards, next_obses, discounts
+        else:
+            log_probs = torch.cat(log_probs, dim=1)
+            return obses, actions, rewards, next_obses, discounts, log_probs
