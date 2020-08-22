@@ -1,5 +1,5 @@
 # env
-env: reach
+env: task1
 action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
@@ -11,8 +11,8 @@ curriculum_max_step: 1000000
 curriculum_init_p: 0.0
 # david curriculum
 use_curriculum: true
-start_shape: (9,)
-goal_shape: (3,3)
+start_shape: (9+3+4,)
+goal_shape: (3+4,)
 curriculum_buffer_capacity: 10000
 R_min: 0.2
 R_max: 0.9

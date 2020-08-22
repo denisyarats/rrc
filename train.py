@@ -53,14 +53,11 @@ class Workspace(object):
                              cfg.use_curriculum, cfg.start_shape,
                              cfg.goal_shape, cfg.curriculum_buffer_capacity,
                              cfg.R_min, cfg.R_max, cfg.new_goal_freq,
-                             cfg.target_task_freq, cfg.n_random_actions)
+                             cfg.target_task_freq, cfg.n_random_actions,
+                             cfg.difficulty)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                                   cfg.episode_length, self.eval_initializer,
-                                  cfg.seed + 1,
-                                  False, cfg.start_shape,
-                                  cfg.goal_shape, cfg.curriculum_buffer_capacity,
-                                  cfg.R_min, cfg.R_max, cfg.new_goal_freq,
-                                  cfg.target_task_freq, cfg.n_random_actions)
+                                  cfg.seed + 1, False)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space

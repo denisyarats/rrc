@@ -26,7 +26,7 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
          use_curriculum=False, start_shape=None, goal_shape=None,
          buffer_capacity=None, R_min=None, R_max=None,
          new_goal_freq=None, target_task_freq=None,
-         n_random_actions=None):
+         n_random_actions=None, difficulty=None):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -54,6 +54,17 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
                                 new_goal_freq=new_goal_freq,
                                 target_task_freq=target_task_freq,
                                 n_random_actions=n_random_actions)
+        else:
+            env = curriculum.CubeCurriculum(env,
+                                start_shape=start_shape,
+                                goal_shape=goal_shape,
+                                buffer_capacity=buffer_capacity,
+                                R_min=R_min,
+                                R_max=R_max,
+                                new_goal_freq=new_goal_freq,
+                                target_task_freq=target_task_freq,
+                                n_random_actions=n_random_actions,
+                                difficulty=difficulty)
 
     env.seed(seed)
 

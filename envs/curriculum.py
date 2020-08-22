@@ -69,6 +69,9 @@ class Curriculum(gym.GoalEnv):
     def sample_target_start_and_goal(self):
         raise NotImplementedError
 
+    def compute_start(self, t):
+        raise NotImplementedError
+
     def reset_simulator(self, start, goal):
         raise NotImplementedError
 
@@ -91,6 +94,7 @@ class Curriculum(gym.GoalEnv):
             # always add the first (start,goal) pair to the buffer
             if len(self.curriculum_buffer) == 0:
                 self.curriculum_buffer.add(self.start, self.goal, self.R_min + 1)
+
         # sometimes sample (start, goal) from the target task
         elif len(self.curriculum_buffer) % self.target_task_freq == 0:
             start, goal = self.sample_target_start_and_goal()
@@ -106,7 +110,7 @@ class Curriculum(gym.GoalEnv):
             for i in range(self.n_random_actions):
                 self.env.step(self.action_space.sample())
             t = self.env.platform.simfinger._t
-            self.start = self.env.platform.get_robot_observation(t+1).position
+            self.start = self.compute_start(t)
 
         # reset simulation
         self.reset_simulator(self.start, self.goal)
@@ -204,6 +208,10 @@ class ReachCurriculum(Curriculum):
         goal = self._generate_pose_goal()
         start = TriFingerPlatform.spaces.robot_position.default
         return start, goal
+
+    def compute_start(self, t):
+        start = self.env.platform.get_robot_observation(t+1).position
+        return start
 
     def reset_simulator(self, start, goal):
         del self.env.platform
@@ -304,8 +312,13 @@ class CubeCurriculum(Curriculum):
 
         goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
-
         return start, goal
+
+    def compute_start(self, t):
+        robot_pos = self.env.platform.get_robot_observation(t+1).position
+        cube_pos = self.env.platform.get_object_pose(t+1)
+        start = np.concatenate([robot_pos, cube_pos.position, cube_pos.orientation])
+        return start
 
     def reset_simulator(self, start, goal):
         del self.env.platform
@@ -355,4 +368,4 @@ class CubeCurriculum(Curriculum):
         ordered_goals[:,:-1] *= 1 + epsilon
         ordered_goals[:,-1] /= 2
 
-        return ordered_goals
+        return ordered_goals.flatten()
