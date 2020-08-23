@@ -55,6 +55,8 @@ class Curriculum(gym.GoalEnv):
                                                 self.buffer_capacity,
                                                 self.R_min,
                                                 self.R_max)
+
+        self.n_resets = 0
         return
 
     def sample_new_start_and_goal(self):
@@ -81,25 +83,21 @@ class Curriculum(gym.GoalEnv):
             self.curriculum_buffer.add(self.start, self.goal, self.ep_reward)
         self.ep_reward = 0
 
-        # reset start and goal
+        # sometimes sample (start, goal) from the target task
+        if self.n_resets % self.target_task_freq == 0:
+            start, goal = self.sample_target_start_and_goal()
+            self.start = start
+            self.goal = goal
+            # always add the first (start,goal) pair to the buffer
+            if len(self.curriculum_buffer) == 0:
+                self.curriculum_buffer.add(self.start, self.goal, self.R_min + 1)
         # somtimes sample new (start, goal) pairs
-        if len(self.curriculum_buffer) % self.new_goal_freq == 0:
-            # generate new start and goal
+        elif self.n_resets % self.new_goal_freq == 0:
             del self.env.platform
             self.env.platform = TriFingerPlatform()
             start, goal = self.sample_new_start_and_goal()
             self.start = start
-            self.goal = goal
-
-            # always add the first (start,goal) pair to the buffer
-            if len(self.curriculum_buffer) == 0:
-                self.curriculum_buffer.add(self.start, self.goal, self.R_min + 1)
-
-        # sometimes sample (start, goal) from the target task
-        elif len(self.curriculum_buffer) % self.target_task_freq == 0:
-            start, goal = self.sample_target_start_and_goal()
-            self.start = start
-            self.goal = goal
+            self.goal = goal    
         # usually sample goal from buffer and add a few random actions
         else:
             start, goal = self.curriculum_buffer.sample()
@@ -117,6 +115,7 @@ class Curriculum(gym.GoalEnv):
 
         self.env.info = {}
         self.env.step_count = 0
+        self.n_resets += 1
         return self.env._create_observation(0)
 
     def step(self, action):
