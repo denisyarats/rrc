@@ -21,12 +21,22 @@ def make_initializer(name, init_p, max_step, difficulty):
         assert False, f'wrong initializer: {name}'
 
 
-def make(env_name, action_type, action_repeat, episode_length, initializer,
+def make(env_name,
+         action_type,
+         action_repeat,
+         episode_length,
+         initializer,
          seed,
-         use_curriculum=False, start_shape=None, goal_shape=None,
-         buffer_capacity=None, R_min=None, R_max=None,
-         new_goal_freq=None, target_task_freq=None,
-         n_random_actions=None, difficulty=None):
+         use_curriculum=False,
+         start_shape=None,
+         goal_shape=None,
+         buffer_capacity=None,
+         R_min=None,
+         R_max=None,
+         new_goal_freq=None,
+         target_task_freq=None,
+         n_random_actions=None,
+         difficulty=None):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -46,25 +56,25 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
     if use_curriculum:
         if env_name == 'reach':
             env = curriculum.ReachCurriculum(env,
-                                start_shape=start_shape,
-                                goal_shape=goal_shape,
-                                buffer_capacity=buffer_capacity,
-                                R_min=R_min,
-                                R_max=R_max,
-                                new_goal_freq=new_goal_freq,
-                                target_task_freq=target_task_freq,
-                                n_random_actions=n_random_actions)
+                                             start_shape=start_shape,
+                                             goal_shape=goal_shape,
+                                             buffer_capacity=buffer_capacity,
+                                             R_min=R_min,
+                                             R_max=R_max,
+                                             new_goal_freq=new_goal_freq,
+                                             target_task_freq=target_task_freq,
+                                             n_random_actions=n_random_actions)
         else:
             env = curriculum.CubeCurriculum(env,
-                                start_shape=start_shape,
-                                goal_shape=goal_shape,
-                                buffer_capacity=buffer_capacity,
-                                R_min=R_min,
-                                R_max=R_max,
-                                new_goal_freq=new_goal_freq,
-                                target_task_freq=target_task_freq,
-                                n_random_actions=n_random_actions,
-                                difficulty=difficulty)
+                                            start_shape=start_shape,
+                                            goal_shape=goal_shape,
+                                            buffer_capacity=buffer_capacity,
+                                            R_min=R_min,
+                                            R_max=R_max,
+                                            new_goal_freq=new_goal_freq,
+                                            target_task_freq=target_task_freq,
+                                            n_random_actions=n_random_actions,
+                                            difficulty=difficulty)
 
     env.seed(seed)
 
@@ -76,6 +86,7 @@ def make(env_name, action_type, action_repeat, episode_length, initializer,
     assert np.all(action_space.high <= +1.0)
 
     return env
+
 
 from gym.envs.registration import register
 

@@ -10,16 +10,16 @@ from envs import ActionType
 
 class Task(CubeEnv):
     """a Task specifies a reward and initializer in a CubeEnv."""
-
-    def __init__(self,
-                initializer,
-                action_type=ActionType.POSITION,
-                frameskip=1,
-                visualization=False,
-                episode_length=move_cube.episode_length,
-            ):
+    def __init__(
+        self,
+        initializer,
+        action_type=ActionType.POSITION,
+        frameskip=1,
+        visualization=False,
+        episode_length=move_cube.episode_length,
+    ):
         super(Task, self).__init__(initializer, action_type, frameskip,
-                                    visualization, episode_length)
+                                   visualization, episode_length)
 
     def compute_reward(self, observation, info):
 
@@ -34,14 +34,15 @@ class ReachAndPush(Task):
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
-        object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
-        target_pos = move_cube.Pose.from_dict(observation['desired_goal']).position
+        object_pos = move_cube.Pose.from_dict(
+            observation['achieved_goal']).position
+        target_pos = move_cube.Pose.from_dict(
+            observation['desired_goal']).position
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.1 * radius),
                                      margin=radius,
                                      sigmoid='long_tail')
-
 
         # compute reward to see that each fingert is close to the cube
         grasp = 0
@@ -85,7 +86,8 @@ class ReachObject(Task):
         radius = move_cube._cube_3d_radius
         robot_id = self.platform.simfinger.finger_id
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
-        object_pos = move_cube.Pose.from_dict(observation['achieved_goal']).position
+        object_pos = move_cube.Pose.from_dict(
+            observation['achieved_goal']).position
 
         dist = 0
         for finger_id in finger_ids:
@@ -99,8 +101,8 @@ class RRC(Task):
     """the task from the RRC challenge, with exponentiated reward"""
     def compute_reward(self, observation, info):
         reward = -move_cube.evaluate_state(
-                    move_cube.Pose.from_dict(desired_goal),
-                    move_cube.Pose.from_dict(achieved_goal),
-                    info["difficulty"],
-                    )
+            move_cube.Pose.from_dict(desired_goal),
+            move_cube.Pose.from_dict(achieved_goal),
+            info["difficulty"],
+        )
         return np.exp(reward)

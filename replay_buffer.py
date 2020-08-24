@@ -91,18 +91,24 @@ class ReplayBuffer(object):
         obses, actions, rewards, next_obses, discounts, log_probs = [],[],[],[],[],[]
         not_done = 1.0 - self.dones[idxs]
         for i in range(n):
-            obses.append(torch.as_tensor(self.obses[idxs + i],
+            obses.append(
+                torch.as_tensor(self.obses[idxs + i],
                                 device=self.device).float().unsqueeze(1))
-            next_obses.append(torch.as_tensor(self.next_obses[idxs + i],
+            next_obses.append(
+                torch.as_tensor(self.next_obses[idxs + i],
                                 device=self.device).float().unsqueeze(1))
-            actions.append(torch.as_tensor(self.actions[idxs + i],
+            actions.append(
+                torch.as_tensor(self.actions[idxs + i],
                                 device=self.device).unsqueeze(1))
-            rewards.append(torch.as_tensor(self.rewards[idxs + i],
+            rewards.append(
+                torch.as_tensor(self.rewards[idxs + i],
                                 device=self.device).unsqueeze(1))
-            not_done *= (1.0 - self.dones[idxs+i])
-            discounts.append(torch.as_tensor(discount * not_done,
+            not_done *= (1.0 - self.dones[idxs + i])
+            discounts.append(
+                torch.as_tensor(discount * not_done,
                                 device=self.device).unsqueeze(1))
-            log_probs.append(torch.as_tensor(self.log_probs[idxs + i],
+            log_probs.append(
+                torch.as_tensor(self.log_probs[idxs + i],
                                 device=self.device).unsqueeze(1))
 
         obses = torch.cat(obses, dim=1)

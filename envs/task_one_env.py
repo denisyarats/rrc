@@ -139,10 +139,12 @@ class TaskOneEnv(gym.GoalEnv):
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(grasp, rewards.tolerance(finger_to_object,
-                                       bounds=(0, 0.5 * cube_radius),
-                                       margin=arena_radius,
-                                       sigmoid='long_tail'))
+            grasp = max(
+                grasp,
+                rewards.tolerance(finger_to_object,
+                                  bounds=(0, 0.5 * cube_radius),
+                                  margin=arena_radius,
+                                  sigmoid='long_tail'))
 
             #finger_to_target = np.linalg.norm(finger_pos - target_pos)
             #hand_away += rewards.tolerance(finger_to_target,

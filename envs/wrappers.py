@@ -8,7 +8,8 @@ def flat_space(space, value=None):
     else:
         assert type(space) == gym.spaces.Dict
         for key in space.spaces:
-            for x in flat_space(space[key], None if value is None else value[key]):
+            for x in flat_space(space[key],
+                                None if value is None else value[key]):
                 yield x
 
 
@@ -26,11 +27,15 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
             for space, _ in flat_space(self.env.observation_space)
         ]
 
-        self.observation_space = gym.spaces.Box(low=np.concatenate(low, axis=0),
-                                                high=np.concatenate(high, axis=0))
+        self.observation_space = gym.spaces.Box(low=np.concatenate(low,
+                                                                   axis=0),
+                                                high=np.concatenate(high,
+                                                                    axis=0))
 
     def observation(self, obs):
-        observation = [x.flatten() for _, x in flat_space(self.env.observation_space, obs)]
+        observation = [
+            x.flatten() for _, x in flat_space(self.env.observation_space, obs)
+        ]
 
         observation = np.concatenate(observation, axis=0)
         return observation
@@ -53,6 +58,7 @@ class ActionScalingWrapper(gym.ActionWrapper):
         true_scale = self.env.action_space.high - self.env.action_space.low
         action = action * true_scale + self.env.action_space.low
         return action.astype(self.env.action_space.dtype)
+
 
 """
 def FlattenActionWrapper(gym.ActionWrapper):

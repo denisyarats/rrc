@@ -49,8 +49,7 @@ class Workspace(object):
                                                       cfg.difficulty)
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                              cfg.episode_length, self.train_initializer,
-                             cfg.seed,
-                             cfg.use_curriculum, cfg.start_shape,
+                             cfg.seed, cfg.use_curriculum, cfg.start_shape,
                              cfg.goal_shape, cfg.curriculum_buffer_capacity,
                              cfg.R_min, cfg.R_max, cfg.new_goal_freq,
                              cfg.target_task_freq, cfg.n_random_actions,
@@ -170,10 +169,13 @@ class Workspace(object):
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),
                                            action_space.shape)
-                log_prob = -np.log(np.prod(action_space.high - action_space.low))
+                log_prob = -np.log(
+                    np.prod(action_space.high - action_space.low))
             else:
                 with utils.eval_mode(self.agent):
-                    action, log_prob = self.agent.act(obs, sample=True, log_prob=True)
+                    action, log_prob = self.agent.act(obs,
+                                                      sample=True,
+                                                      log_prob=True)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:
@@ -187,7 +189,8 @@ class Workspace(object):
                 if k.startswith('reward_'):
                     reward_infos[k] += v
 
-            self.replay_buffer.add(obs, action, reward, next_obs, done, log_prob)
+            self.replay_buffer.add(obs, action, reward, next_obs, done,
+                                   log_prob)
 
             obs = next_obs
             episode_step += 1

@@ -62,10 +62,10 @@ class ReachEnv(gym.GoalEnv):
 
         spaces = TriFingerPlatform.spaces
 
-        robot_xyz_space = gym.spaces.Box(
-                    low=np.array([[-0.3, -0.3, 0]]*3, dtype=np.float32),
-                    high=np.array([[0.3, 0.3, 0.3]]*3, dtype=np.float32)
-                    )
+        robot_xyz_space = gym.spaces.Box(low=np.array([[-0.3, -0.3, 0]] * 3,
+                                                      dtype=np.float32),
+                                         high=np.array([[0.3, 0.3, 0.3]] * 3,
+                                                       dtype=np.float32))
 
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
@@ -100,12 +100,13 @@ class ReachEnv(gym.GoalEnv):
         reward = 0.
         for i in range(3):
             dist = np.linalg.norm(observation['desired_goal'][i] -
-                                    observation['achieved_goal'][i])
-            reward += rewards.tolerance(dist, bounds=(0., 0.01),
-                                        margin=0.05, value_at_margin=0.1,
+                                  observation['achieved_goal'][i])
+            reward += rewards.tolerance(dist,
+                                        bounds=(0., 0.01),
+                                        margin=0.05,
+                                        value_at_margin=0.1,
                                         sigmoid='long_tail')
         return reward / 3.
-
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.
@@ -174,18 +175,17 @@ class ReachEnv(gym.GoalEnv):
         self.platform = TriFingerPlatform(
             visualization=self.visualization,
             initial_robot_position=initial_robot_position,
-            initial_object_pose=move_cube.Pose(np.array([0,0,-10]))
-        )
+            initial_object_pose=move_cube.Pose(np.array([0, 0, -10])))
 
         self.goal = self._generate_pose_goal()
 
         # visualize the goals
         for i in range(3):
             visual_objects.CubeMarker(
-                    width=0.025,
-                    position=self.goal[i],
-                    orientation=[0,0,0,1],
-                )
+                width=0.025,
+                position=self.goal[i],
+                orientation=[0, 0, 0, 1],
+            )
 
         self.info = {}
 
@@ -243,7 +243,8 @@ class ReachEnv(gym.GoalEnv):
 
     def _random_xyz(self):
         # sample uniform position in circle (https://stackoverflow.com/a/50746409)
-        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(random.random())
+        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
+            random.random())
         theta = random.uniform(0, 2 * np.pi)
 
         # x,y-position of the cube
@@ -256,8 +257,10 @@ class ReachEnv(gym.GoalEnv):
 
     def _get_robot_xyz(self):
         robot_id = self.platform.simfinger.finger_id
-        return np.array([pybullet.getLinkState(robot_id, i)[0] for
-                        i in self.platform.simfinger.pybullet_tip_link_indices])
+        return np.array([
+            pybullet.getLinkState(robot_id, i)[0]
+            for i in self.platform.simfinger.pybullet_tip_link_indices
+        ])
 
     def _generate_pose_goal(self):
         """
@@ -278,13 +281,13 @@ class ReachEnv(gym.GoalEnv):
             dists.append(np.array(d))
         dists = np.array(dists)
 
-        ordered_goals = np.zeros((3,3))
+        ordered_goals = np.zeros((3, 3))
         for i in range(3):
             idx = np.argmin(dists)
             goal_id = idx // 3
             finger_id = idx % 3
 
-            dists[goal_id,:] = np.inf
+            dists[goal_id, :] = np.inf
             dists[:, finger_id] = np.inf
 
             ordered_goals[finger_id] = goals[goal_id]
@@ -299,11 +302,12 @@ class ReachEnv(gym.GoalEnv):
         robot_id = self.platform.simfinger.finger_id
         tip_ids = self.platform.simfinger.pybullet_tip_link_indices
 
-        pos = np.zeros((3,3))
+        pos = np.zeros((3, 3))
         for i, tip_id in enumerate(tip_ids):
             pos[i] = pybullet.calculateInverseKinematics(
-                                robot_id, tip_id, target_locs[i],
-                                maxNumIterations=1000)[3*i:3*i+3]
+                robot_id, tip_id, target_locs[i],
+                maxNumIterations=1000)[3 * i:3 * i + 3]
         joint_angles = pos.flatten()
-        self.platform.simfinger.reset_finger_positions_and_velocities(joint_angles)
+        self.platform.simfinger.reset_finger_positions_and_velocities(
+            joint_angles)
         return joint_angles

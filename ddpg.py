@@ -51,8 +51,6 @@ class Actor(nn.Module):
                 logger.log_param(f'train_actor/fc{i}', m, step)
 
 
-
-
 class Critic(nn.Module):
     """Critic network, employes double Q-learning."""
     def __init__(self, obs_shape, action_shape, hidden_dim, hidden_depth,
@@ -99,11 +97,22 @@ class Critic(nn.Module):
 
 class DDPGAgent(object):
     """Data regularized Q: actor-critic method for learning from pixels."""
-    def __init__(self, obs_shape, action_shape, action_range, device,
-                 critic_cfg, actor_cfg, discount, lr,
-                 actor_update_frequency, critic_tau,
-                 critic_target_update_frequency, batch_size, nstep,
-                 use_ln, head_init_coef,
+    def __init__(self,
+                 obs_shape,
+                 action_shape,
+                 action_range,
+                 device,
+                 critic_cfg,
+                 actor_cfg,
+                 discount,
+                 lr,
+                 actor_update_frequency,
+                 critic_tau,
+                 critic_target_update_frequency,
+                 batch_size,
+                 nstep,
+                 use_ln,
+                 head_init_coef,
                  retrace=False):
         self.action_range = action_range
         self.device = device
@@ -143,7 +152,8 @@ class DDPGAgent(object):
         action = action.clamp(*self.action_range)
         assert action.ndim == 2 and action.shape[0] == 1
         if log_prob:
-            return utils.to_np(action[0]), utils.to_np(dist.log_prob(action).sum())
+            return utils.to_np(action[0]), utils.to_np(
+                dist.log_prob(action).sum())
         else:
             return utils.to_np(action[0])
 
@@ -175,32 +185,33 @@ class DDPGAgent(object):
 
         self.critic.log(logger, step)
 
-
     """
     Retrace implementation based off of:
         https://github.com/deepmind/trfl/blob/master/trfl/retrace_ops.py
     Paper:
         https://arxiv.org/abs/1606.02647
     """
-    def _retrace_target(self, Q, policy,
-                            obses, actions, rewards, next_obses, discounts,
-                            log_probs):
+
+    def _retrace_target(self, Q, policy, obses, actions, rewards, next_obses,
+                        discounts, log_probs):
         batch_size = obses.shape[0]
         n = obses.shape[1]
 
-        obs_action = torch.cat([obses[:,-1], actions[:,-1]], dim=-1)
+        obs_action = torch.cat([obses[:, -1], actions[:, -1]], dim=-1)
         target = Q(obs_action)
         # we can probably make this more efficient
-        for t in np.arange(n-1,-1,-1):
-            next_action = policy(next_obses[:,t]).sample()
+        for t in np.arange(n - 1, -1, -1):
+            next_action = policy(next_obses[:, t]).sample()
             # should we take more action samples?
-            next_obs_action = torch.cat([next_obses[:,t], next_action], dim=-1)
+            next_obs_action = torch.cat([next_obses[:, t], next_action],
+                                        dim=-1)
             next_Q = Q(next_obs_action)
-            obs_action = torch.cat([obses[:,t], actions[:,t]], dim=-1)
+            obs_action = torch.cat([obses[:, t], actions[:, t]], dim=-1)
             current_Q = Q(obs_action)
 
-            action_log_prob = policy(obses[:,t]).log_prob(actions[:,t]).sum(-1, keepdim=True)
-            ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:,t])
+            action_log_prob = policy(obses[:, t]).log_prob(actions[:, t]).sum(
+                -1, keepdim=True)
+            ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:, t])
             c_t = torch.clamp(ratio, max=1.0)
             target = discounts[:,t] * c_t * target + \
                         rewards[:,t] + discounts[:,t] * (next_Q - c_t * current_Q)
@@ -208,21 +219,21 @@ class DDPGAgent(object):
         return target
 
     def retrace_update_critic(self, obses, actions, rewards, next_obses,
-                                discounts, log_probs, logger, step):
+                              discounts, log_probs, logger, step):
         with torch.no_grad():
             target1 = self._retrace_target(self.critic_target.Q1, self.actor,
-                                        obses, actions, rewards,
-                                        next_obses, discounts, log_probs)
+                                           obses, actions, rewards, next_obses,
+                                           discounts, log_probs)
             target2 = self._retrace_target(self.critic_target.Q2, self.actor,
-                                        obses, actions, rewards,
-                                        next_obses, discounts, log_probs)
+                                           obses, actions, rewards, next_obses,
+                                           discounts, log_probs)
             min_target = torch.min(target1, target2)
 
         logger.log('train_critic/target_q1', target1.mean(), step)
         logger.log('train_critic/target_q2', target2.mean(), step)
         logger.log('train_critic/q', min_target.mean(), step)
 
-        Q1, Q2 = self.critic(obses[:,0], actions[:,0])
+        Q1, Q2 = self.critic(obses[:, 0], actions[:, 0])
         critic_loss = F.mse_loss(Q1, min_target) + F.mse_loss(Q2, min_target)
 
         logger.log('train_critic/q1', Q1.mean(), step)
@@ -235,7 +246,6 @@ class DDPGAgent(object):
         self.critic_optimizer.step()
 
         self.critic.log(logger, step)
-
 
     def update_actor(self, obs, logger, step):
         dist = self.actor(obs)
@@ -256,7 +266,6 @@ class DDPGAgent(object):
 
         self.actor.log(logger, step)
 
-
     def update(self, replay_buffer, logger, step):
         if self.retrace:
             obses, actions, rewards, next_obses, discounts, log_probs = \
@@ -265,8 +274,8 @@ class DDPGAgent(object):
             logger.log('train/batch_reward', rewards.mean(), step)
 
             self.retrace_update_critic(obses, actions, rewards, next_obses,
-                                discounts, log_probs, logger, step)
-            obs = obses[:,0]
+                                       discounts, log_probs, logger, step)
+            obs = obses[:, 0]
         else:
             obs, action, reward, next_obs, discount = \
               replay_buffer.sample(self.batch_size, self.discount, self.nstep)
@@ -283,19 +292,14 @@ class DDPGAgent(object):
             utils.soft_update_params(self.critic, self.critic_target,
                                      self.critic_tau)
 
-
     def save(self, model_dir, step):
-        torch.save(
-            self.actor.state_dict(), '%s/actor_%s.pt' % (model_dir, step)
-        )
-        torch.save(
-            self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
-        )
+        torch.save(self.actor.state_dict(),
+                   '%s/actor_%s.pt' % (model_dir, step))
+        torch.save(self.critic.state_dict(),
+                   '%s/critic_%s.pt' % (model_dir, step))
 
     def load(self, model_dir, step):
         self.actor.load_state_dict(
-            torch.load('%s/actor_%s.pt' % (model_dir, step))
-        )
+            torch.load('%s/actor_%s.pt' % (model_dir, step)))
         self.critic.load_state_dict(
-            torch.load('%s/critic_%s.pt' % (model_dir, step))
-        )
+            torch.load('%s/critic_%s.pt' % (model_dir, step)))

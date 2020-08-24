@@ -11,7 +11,6 @@ from rrc_simulation.tasks import move_cube
 import pybullet
 
 from rrc_simulation.gym_wrapper.envs.cube_env import ActionType
-
 """
 Reverse curriculum strategy:
 
@@ -29,10 +28,15 @@ based off of Florensa et al. https://arxiv.org/abs/1707.05300
 class Curriculum(gym.GoalEnv):
     """Curriculum over goals and initial states."""
     def __init__(self,
-                env, start_shape, goal_shape,
-                buffer_capacity=1000, R_min=0.2, R_max=0.9,
-                new_goal_freq=3, target_task_freq=10,
-                n_random_actions=50):
+                 env,
+                 start_shape,
+                 goal_shape,
+                 buffer_capacity=1000,
+                 R_min=0.2,
+                 R_max=0.9,
+                 new_goal_freq=3,
+                 target_task_freq=10,
+                 n_random_actions=50):
         self.env = env
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
@@ -51,10 +55,9 @@ class Curriculum(gym.GoalEnv):
         self.R_max = R_max * self.env.episode_length
 
         self.curriculum_buffer = CurriculumBuffer(self.start_shape,
-                                                self.goal_shape,
-                                                self.buffer_capacity,
-                                                self.R_min,
-                                                self.R_max)
+                                                  self.goal_shape,
+                                                  self.buffer_capacity,
+                                                  self.R_min, self.R_max)
 
         self.n_resets = 0
         return
@@ -90,14 +93,15 @@ class Curriculum(gym.GoalEnv):
             self.goal = goal
             # always add the first (start,goal) pair to the buffer
             if len(self.curriculum_buffer) == 0:
-                self.curriculum_buffer.add(self.start, self.goal, self.R_min + 1)
+                self.curriculum_buffer.add(self.start, self.goal,
+                                           self.R_min + 1)
         # somtimes sample new (start, goal) pairs
         elif self.n_resets % self.new_goal_freq == 0:
             del self.env.platform
             self.env.platform = TriFingerPlatform()
             start, goal = self.sample_new_start_and_goal()
             self.start = start
-            self.goal = goal    
+            self.goal = goal
         # usually sample goal from buffer and add a few random actions
         else:
             start, goal = self.curriculum_buffer.sample()
@@ -128,8 +132,10 @@ class Curriculum(gym.GoalEnv):
 
     def _get_robot_xyz(self):
         robot_id = self.env.platform.simfinger.finger_id
-        return np.array([pybullet.getLinkState(robot_id, i)[0] for
-                        i in self.env.platform.simfinger.pybullet_tip_link_indices])
+        return np.array([
+            pybullet.getLinkState(robot_id, i)[0]
+            for i in self.env.platform.simfinger.pybullet_tip_link_indices
+        ])
 
     def _set_robot_xyz(self, target_locs):
         """
@@ -139,19 +145,19 @@ class Curriculum(gym.GoalEnv):
         robot_id = self.env.platform.simfinger.finger_id
         tip_ids = self.env.platform.simfinger.pybullet_tip_link_indices
 
-        pos = np.zeros((3,3))
+        pos = np.zeros((3, 3))
         for i, tip_id in enumerate(tip_ids):
             pos[i] = pybullet.calculateInverseKinematics(
-                                robot_id, tip_id, target_locs[i],
-                                maxNumIterations=1000)[3*i:3*i+3]
+                robot_id, tip_id, target_locs[i],
+                maxNumIterations=1000)[3 * i:3 * i + 3]
         joint_angles = pos.flatten()
-        self.env.platform.simfinger.reset_finger_positions_and_velocities(joint_angles)
+        self.env.platform.simfinger.reset_finger_positions_and_velocities(
+            joint_angles)
         return joint_angles
 
 
 class CurriculumBuffer(object):
-    def __init__(self, start_shape, goal_shape, capacity,
-                R_min, R_max):
+    def __init__(self, start_shape, goal_shape, capacity, R_min, R_max):
         self.capacity = capacity
 
         self.R_min = R_min
@@ -177,25 +183,28 @@ class CurriculumBuffer(object):
 
     def sample(self, batch_size=1):
         idx = np.random.randint(0,
-                                 self.capacity if self.full else self.idx,
-                                 size=batch_size)
+                                self.capacity if self.full else self.idx,
+                                size=batch_size)
         start = self.starts[idx]
         goal = self.goals[idx]
 
         return np.squeeze(start), np.squeeze(goal)
 
 
-
 class ReachCurriculum(Curriculum):
     def __init__(self,
-                env, start_shape=(9,), goal_shape=(3,3),
-                buffer_capacity=1000, R_min=0.2, R_max=0.9,
-                new_goal_freq=3, target_task_freq=10,
-                n_random_actions=50):
-        super().__init__(env, start_shape, goal_shape,
-                        buffer_capacity, R_min, R_max,
-                        new_goal_freq, target_task_freq,
-                        n_random_actions)
+                 env,
+                 start_shape=(9,),
+                 goal_shape=(3, 3),
+                 buffer_capacity=1000,
+                 R_min=0.2,
+                 R_max=0.9,
+                 new_goal_freq=3,
+                 target_task_freq=10,
+                 n_random_actions=50):
+        super().__init__(env, start_shape, goal_shape, buffer_capacity, R_min,
+                         R_max, new_goal_freq, target_task_freq,
+                         n_random_actions)
         return
 
     def sample_new_start_and_goal(self):
@@ -209,7 +218,7 @@ class ReachCurriculum(Curriculum):
         return start, goal
 
     def compute_start(self, t):
-        start = self.env.platform.get_robot_observation(t+1).position
+        start = self.env.platform.get_robot_observation(t + 1).position
         return start
 
     def reset_simulator(self, start, goal):
@@ -217,21 +226,21 @@ class ReachCurriculum(Curriculum):
         self.env.platform = TriFingerPlatform(
             visualization=self.env.visualization,
             initial_robot_position=start,
-            initial_object_pose=move_cube.Pose(np.array([0,0,-10]))
-        )
+            initial_object_pose=move_cube.Pose(np.array([0, 0, -10])))
         self.env.goal = goal
 
         for i in range(3):
             visual_objects.CubeMarker(
-                    width=0.025,
-                    position=goal[i],
-                    orientation=[0,0,0,1],
-                )
+                width=0.025,
+                position=goal[i],
+                orientation=[0, 0, 0, 1],
+            )
         return
 
     def _random_xyz(self):
         # sample uniform position in circle (https://stackoverflow.com/a/50746409)
-        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(np.random.random())
+        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
+            np.random.random())
         theta = np.random.uniform(0, 2 * np.pi)
 
         # x,y-position of the cube
@@ -261,13 +270,13 @@ class ReachCurriculum(Curriculum):
             dists.append(np.array(d))
         dists = np.array(dists)
 
-        ordered_goals = np.zeros((3,3))
+        ordered_goals = np.zeros((3, 3))
         for i in range(3):
             idx = np.argmin(dists)
             goal_id = idx // 3
             finger_id = idx % 3
 
-            dists[goal_id,:] = np.inf
+            dists[goal_id, :] = np.inf
             dists[:, finger_id] = np.inf
 
             ordered_goals[finger_id] = goals[goal_id]
@@ -277,15 +286,19 @@ class ReachCurriculum(Curriculum):
 
 class CubeCurriculum(Curriculum):
     def __init__(self,
-                env, difficulty,
-                start_shape=(9+7,), goal_shape=(3+4,),
-                buffer_capacity=1000, R_min=0.2, R_max=0.9,
-                new_goal_freq=3, target_task_freq=10,
-                n_random_actions=50):
-        super().__init__(env, start_shape, goal_shape,
-                        buffer_capacity, R_min, R_max,
-                        new_goal_freq, target_task_freq,
-                        n_random_actions)
+                 env,
+                 difficulty,
+                 start_shape=(9 + 7,),
+                 goal_shape=(3 + 4,),
+                 buffer_capacity=1000,
+                 R_min=0.2,
+                 R_max=0.9,
+                 new_goal_freq=3,
+                 target_task_freq=10,
+                 n_random_actions=50):
+        super().__init__(env, start_shape, goal_shape, buffer_capacity, R_min,
+                         R_max, new_goal_freq, target_task_freq,
+                         n_random_actions)
         self.difficulty = difficulty
         return
 
@@ -294,11 +307,11 @@ class CubeCurriculum(Curriculum):
         goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
 
-        cube_init_pos = np.array([goal[0], goal[1],
-                                move_cube._CUBE_WIDTH / 2.])
-        cube_init_or = np.array([0,0,0,1])
-        tip_init = self._choose_tip_init(move_cube.Pose(position=cube_init_pos,
-                                        orientation=cube_init_or))
+        cube_init_pos = np.array(
+            [goal[0], goal[1], move_cube._CUBE_WIDTH / 2.])
+        cube_init_or = np.array([0, 0, 0, 1])
+        tip_init = self._choose_tip_init(
+            move_cube.Pose(position=cube_init_pos, orientation=cube_init_or))
         start = np.concatenate([tip_init, cube_init_pos, cube_init_or])
         return start, goal
 
@@ -306,17 +319,18 @@ class CubeCurriculum(Curriculum):
         # standard task init
         robot_init = TriFingerPlatform.spaces.robot_position.default
         cube_init = move_cube.sample_goal(difficulty=-1)
-        start = np.concatenate([robot_init,
-                                cube_init.position, cube_init.orientation])
+        start = np.concatenate(
+            [robot_init, cube_init.position, cube_init.orientation])
 
         goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
         return start, goal
 
     def compute_start(self, t):
-        robot_pos = self.env.platform.get_robot_observation(t+1).position
-        cube_pos = self.env.platform.get_object_pose(t+1)
-        start = np.concatenate([robot_pos, cube_pos.position, cube_pos.orientation])
+        robot_pos = self.env.platform.get_robot_observation(t + 1).position
+        cube_pos = self.env.platform.get_object_pose(t + 1)
+        start = np.concatenate(
+            [robot_pos, cube_pos.position, cube_pos.orientation])
         return start
 
     def reset_simulator(self, start, goal):
@@ -325,8 +339,7 @@ class CubeCurriculum(Curriculum):
             visualization=self.env.visualization,
             initial_robot_position=start[:9],
             initial_object_pose=move_cube.Pose(position=start[9:12],
-                                            orientation=start[12:])
-        )
+                                               orientation=start[12:]))
 
         self.env.goal = {
             "position": goal[:3],
@@ -345,7 +358,7 @@ class CubeCurriculum(Curriculum):
         robot_id = self.env.platform.simfinger.finger_id
         init_tip_locs = self._get_robot_xyz()
         cube_corners = move_cube.get_cube_corner_positions(cube_pose)
-        epsilon=0.1
+        epsilon = 0.1
 
         dists = []
         for i in range(8):
@@ -355,16 +368,16 @@ class CubeCurriculum(Curriculum):
             dists.append(np.array(d))
         dists = np.array(dists)
 
-        ordered_goals = np.zeros((3,3))
+        ordered_goals = np.zeros((3, 3))
         for i in range(3):
             idx = np.argmin(dists.flatten())
             corner_id = idx // 3
             finger_id = idx % 3
             ordered_goals[finger_id] = cube_corners[corner_id]
-            dists[corner_id,:] = np.inf
+            dists[corner_id, :] = np.inf
             dists[:, finger_id] = np.inf
 
-        ordered_goals[:,:-1] *= 1 + epsilon
-        ordered_goals[:,-1] /= 2
+        ordered_goals[:, :-1] *= 1 + epsilon
+        ordered_goals[:, -1] /= 2
 
         return ordered_goals.flatten()
