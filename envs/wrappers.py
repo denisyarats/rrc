@@ -2,14 +2,15 @@ import numpy as np
 import gym
 
 
-def flat_space(space, value=None):
+def flat_space(space, value=None, keys=[]):
     if type(space) == gym.spaces.Box:
-        yield (space, value)
+        yield (space, value, '_'.join(keys))
     else:
         assert type(space) == gym.spaces.Dict
         for key in space.spaces:
             for x in flat_space(space[key],
-                                None if value is None else value[key]):
+                                None if value is None else value[key],
+                                keys + [key]):
                 yield x
 
 
@@ -19,13 +20,19 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
 
         low = [
             space.low.flatten()
-            for space, _ in flat_space(self.env.observation_space)
+            for space, _, _ in flat_space(self.env.observation_space)
         ]
 
         high = [
             space.high.flatten()
-            for space, _ in flat_space(self.env.observation_space)
+            for space, _, _ in flat_space(self.env.observation_space)
         ]
+
+        self.ranges = dict()
+        offset = 0
+        for space, _, key in flat_space(self.env.observation_space):
+            self.ranges[key] = (offset, offset + space.shape[0])
+            offset += space.shape[0]
 
         self.observation_space = gym.spaces.Box(low=np.concatenate(low,
                                                                    axis=0),
@@ -34,7 +41,8 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
 
     def _transform(self, obs):
         obs = [
-            x.flatten() for _, x in flat_space(self.env.observation_space, obs)
+            x.flatten()
+            for _, x, _ in flat_space(self.env.observation_space, obs)
         ]
         return np.concatenate(obs, axis=0)
 

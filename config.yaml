@@ -2,7 +2,7 @@
 env: task1
 action_type: torque # torque or both
 difficulty: 1
-episode_length: 500
+episode_length: 200
 # curriculum
 train_initializer: random
 eval_initializer: random
@@ -32,9 +32,9 @@ parameterization: clipped
 actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
-nstep: 5
+nstep: 1
 random_nstep: true
-her_k: 0
+her_k: 4
 
 
 agent:

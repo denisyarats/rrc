@@ -65,7 +65,7 @@ class Workspace(object):
         self.replay_buffer = ReplayBuffer(
             obs_space.shape, action_space.shape,
             cfg.replay_buffer_capacity * (1 + self.cfg.her_k), self.device,
-            cfg.random_nstep)
+            cfg.random_nstep, self.env.ranges, self.cfg.episode_length, self.cfg.her_k)
 
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None, fps=cfg.video_fps)
@@ -133,15 +133,6 @@ class Workspace(object):
                         self.step,
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
-
-                    # relabel
-                    for i in range(self.cfg.episode_length):
-                        transitions = self.env.relabel_transition(
-                            i, self.cfg.her_k)
-                        for t in transitions:
-                            self.replay_buffer.add(t['obs'], t['action'],
-                                                   t['reward'], t['next_obs'],
-                                                   t['done'])
 
                 self.logger.log('train/episode_reward',
                                 episode_reward / self.cfg.episode_length,
