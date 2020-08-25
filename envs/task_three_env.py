@@ -131,9 +131,9 @@ class TaskThreeEnv(gym.GoalEnv):
                                      sigmoid='long_tail')
 
         above_ground = rewards.tolerance(object_pos[2],
-                                         bounds=(min_height,
-                                                 max_height),
-                                         margin=min_height,
+                                         bounds=(target_pos[2] - 0.2 * min_height,
+                                                 target_pos[2] + 0.2 * min_height),
+                                         margin=0.8 * min_height,
                                          sigmoid='long_tail')
 
         # compute reward to see that each fingert is close to the cube

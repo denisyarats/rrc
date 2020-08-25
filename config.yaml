@@ -1,9 +1,8 @@
 # env
-=======
 env: task3
 action_type: torque # torque or both
 action_repeat: 1
-difficulty: 2
+difficulty: 3
 episode_length: 500
 # denis curriculum
 train_initializer: random
