@@ -112,3 +112,4 @@ hydra:
           cpus_per_task: 4
           gres: gpu:1
           constraint: turing
+          exclude: loopy[8]
