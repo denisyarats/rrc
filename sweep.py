@@ -49,7 +49,7 @@ def main():
 
     overrides.add(key='env', values=['task1'])
     overrides.add(key='num_train_steps', values=[100000])
-    overrides.add(key='eval_frequency', values=[10000])
+    overrides.add(key='eval_frequency', values=[5000])
     overrides.add(key='num_eval_episodes', values=[10])
     overrides.add(key='save_frequency', values=[50000])
 
@@ -60,7 +60,7 @@ def main():
     overrides.add(key='lr', values=[1e-4])
     overrides.add(key='batch_size', values=[128])
     overrides.add(key='actor_stddev', values=[0.2])
-    overrides.add(key='nstep', values=[5])
+    overrides.add(key='nstep', values=[10])
     # seeds
     overrides.add(key='seed', values=list(range(1, 5)))
 
