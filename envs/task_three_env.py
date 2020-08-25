@@ -14,7 +14,7 @@ from dm_control.utils import rewards
 from envs import ActionType
 
 
-class TaskTwoEnv(gym.GoalEnv):
+class TaskThreeEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
     def __init__(
         self,
@@ -40,7 +40,7 @@ class TaskTwoEnv(gym.GoalEnv):
         # Basic initialization
         # ====================
 
-        assert initializer.difficulty == 2
+        assert initializer.difficulty == 3
         self.initializer = initializer
         self.action_type = action_type
         self.visualization = visualization
@@ -115,7 +115,8 @@ class TaskTwoEnv(gym.GoalEnv):
         """
         cube_radius = move_cube._cube_3d_radius
         arena_radius = move_cube._ARENA_RADIUS
-        target_height = move_cube._min_height + 0.05
+        min_height = move_cube._min_height
+        max_height = move_cube._max_height
 
         robot_id = self.platform.simfinger.finger_id
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
@@ -130,9 +131,9 @@ class TaskTwoEnv(gym.GoalEnv):
                                      sigmoid='long_tail')
 
         above_ground = rewards.tolerance(object_pos[2],
-                                         bounds=(0.8 * target_height,
-                                                 1.2 * target_height),
-                                         margin=0.8 * target_height,
+                                         bounds=(min_height,
+                                                 max_height),
+                                         margin=min_height,
                                          sigmoid='long_tail')
 
         # compute reward to see that each fingert is close to the cube
