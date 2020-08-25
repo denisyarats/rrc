@@ -1,8 +1,9 @@
 # env
-env: reach
+=======
+env: task3
 action_type: torque # torque or both
 action_repeat: 1
-difficulty: 1
+difficulty: 2
 episode_length: 500
 # denis curriculum
 train_initializer: random
@@ -44,8 +45,8 @@ actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
-random_nstep: false
-retrace: true
+random_nstep: true
+retrace: false
 
 
 agent:

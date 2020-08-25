@@ -99,3 +99,9 @@ register(
     id="task1-v1",
     entry_point="envs.task_one_env:TaskOneEnv",
 )
+
+register(
+    id="task2-v1",
+    entry_point="envs.task_two_env:TaskTwoEnv",
+)
+
