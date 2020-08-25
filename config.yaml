@@ -1,13 +1,13 @@
 # env
-env: task3
+env: task1
 action_type: torque # torque or both
 action_repeat: 1
-difficulty: 3
-episode_length: 500
+difficulty: 1
+episode_length: 250
 # denis curriculum
-train_initializer: random
-eval_initializer: random
-curriculum_max_step: 1000000
+train_initializer: fixed_goal
+eval_initializer: fixed_goal
+curriculum_max_step: 100000
 curriculum_init_p: 0.0
 # david curriculum
 use_curriculum: false
@@ -20,7 +20,7 @@ new_goal_freq: 10
 target_task_freq: 4
 n_random_actions: 50
 # train
-num_train_steps: 1000000
+num_train_steps: 100000
 num_seed_steps: 1000
 num_train_iters: 1
 replay_buffer_capacity: ${num_train_steps}
@@ -44,7 +44,7 @@ actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
-random_nstep: true
+random_nstep: false
 retrace: false
 
 
@@ -105,9 +105,5 @@ hydra:
     params:
       queue_parameters:
         slurm:
-          max_num_timeout: 100000
-          time: 4319
-          partition: learnfair
-          #partition: priority
-          #comment: neurips_abstract_deadline_may_27
-    mem_limit: 64
+          gres: gpu=1
+          constraint: turing
