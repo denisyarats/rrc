@@ -54,25 +54,13 @@ def main():
     overrides.add(key='save_frequency', values=[50000])
 
     overrides.add(key='action_type', values=['torque'])
-    overrides.add(key='episode_length', values=[250])
+    overrides.add(key='episode_length', values=[100,200,500])
     overrides.add(key='train_initializer', values=['fixed_goal'])
     overrides.add(key='eval_initializer', values=['fixed_goal'])
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    overrides.add(key='lr', values=[1e-3,1e-4,1e-5])
-=======
-    overrides.add(key='lr', values=[1e-5])
->>>>>>> sweep
-=======
-    overrides.add(key='lr', values=[1e-3,1e-4,1e-5])
->>>>>>> sweep
-=======
-    overrides.add(key='lr', values=[1e-3,1e-4,1e-5])
->>>>>>> 23ad4c5bfbe29e6758d3a0e6cc6e6f861a851527
+    overrides.add(key='lr', values=[1e-4])
     overrides.add(key='batch_size', values=[128])
     overrides.add(key='actor_stddev', values=[0.2])
-    overrides.add(key='nstep', values=[10])
+    overrides.add(key='nstep', values=[5])
     # seeds
     overrides.add(key='seed', values=[1])
 

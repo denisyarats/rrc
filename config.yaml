@@ -2,7 +2,7 @@
 env: task1
 action_type: torque # torque or both
 action_repeat: 1
-episode_length: 500
+episode_length: 200
 eval_episode_length: 500
 remove_orientation: true
 # eval env
