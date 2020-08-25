@@ -3,5 +3,4 @@ __pycache__/
 exp
 exp_local
 rrc_simulation
-sweep.py
 cancel_sweep.py
