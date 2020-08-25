@@ -179,7 +179,12 @@ class Logger(object):
         if type(value) == torch.Tensor:
             value = value.item()
         self._try_sw_log(key, value / n, step)
-        mg = self._train_mg if key.startswith('train') else self._eval_mg
+        if key.startswith('train'):
+            mg = self._train_mg
+        elif key.startswith('true_eval'):
+            mg = self._true_eval_mg
+        else:
+            mg = self._eval_mg
         mg.log(key, value, n)
 
     def log_param(self, key, param, step, log_frequency=None):
