@@ -4,6 +4,7 @@ action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
 episode_length: 250
+eval_episode_length: 500
 # denis curriculum
 train_initializer: fixed_goal
 eval_initializer: fixed_goal
@@ -32,7 +33,7 @@ num_eval_episodes: 10
 log_frequency_step: 10000
 log_save_tb: true
 save_video: true
-video_fps: 50
+video_fps: 10
 device: cuda
 # saving
 save_frequency: 100000

@@ -55,7 +55,7 @@ class Workspace(object):
                              cfg.target_task_freq, cfg.n_random_actions,
                              cfg.difficulty)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, self.eval_initializer,
+                                  cfg.eval_episode_length, self.eval_initializer,
                                   cfg.seed + 1, False)
 
         obs_space = self.env.observation_space
@@ -101,10 +101,10 @@ class Workspace(object):
                 episode_reward += reward
                 episode_step += 1
 
-            average_episode_reward += episode_reward / self.cfg.episode_length
+            average_episode_reward += episode_reward / self.cfg.eval_episode_length
             average_episode_length += episode_step
             for k, v in reward_infos.items():
-                average_reward_infos[k] += v / self.cfg.episode_length
+                average_reward_infos[k] += v / self.cfg.eval_episode_length
             self.video_recorder.save(f'{self.step}.mp4')
 
         average_episode_reward /= self.cfg.num_eval_episodes
