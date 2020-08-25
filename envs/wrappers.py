@@ -1,6 +1,8 @@
 import numpy as np
 import gym
 
+from rrc_simulation import visual_objects
+
 
 def flat_space(space, value=None, keys=[]):
     if type(space) == gym.spaces.Box:
@@ -65,6 +67,21 @@ class ActionScalingWrapper(gym.ActionWrapper):
         true_scale = self.env.action_space.high - self.env.action_space.low
         action = action * true_scale + self.env.action_space.low
         return action.astype(self.env.action_space.dtype)
+
+
+class CubeMarkerWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
+
+        self.goal_marker = visual_objects.CubeMarker(
+            width=0.065,
+            position=self.env.goal['position'],
+            orientation=self.env.goal['orientation'])
+
+        return obs
 
 
 """
