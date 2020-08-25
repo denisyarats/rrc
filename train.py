@@ -40,23 +40,31 @@ class Workspace(object):
         self.device = torch.device(cfg.device)
 
         self.train_initializer = envs.make_initializer(cfg.train_initializer,
+                                                       cfg.difficulty,
                                                        cfg.curriculum_init_p,
-                                                       cfg.curriculum_max_step,
-                                                       cfg.difficulty)
+                                                       cfg.curriculum_max_step)
         self.eval_initializer = envs.make_initializer(cfg.eval_initializer,
+                                                      cfg.difficulty,
                                                       cfg.curriculum_init_p,
-                                                      cfg.curriculum_max_step,
-                                                      cfg.difficulty)
+                                                      cfg.curriculum_max_step)
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                              cfg.episode_length, self.train_initializer,
                              cfg.seed, cfg.use_curriculum, cfg.start_shape,
                              cfg.goal_shape, cfg.curriculum_buffer_capacity,
                              cfg.R_min, cfg.R_max, cfg.new_goal_freq,
                              cfg.target_task_freq, cfg.n_random_actions,
-                             cfg.difficulty)
+                             cfg.difficulty,
+                             remove_orientation=cfg.remove_orientation)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                                   cfg.episode_length, self.eval_initializer,
-                                  cfg.seed + 1, False)
+                                  cfg.seed + 1, False,
+                                  remove_orientation=cfg.remove_orientation)
+        # always eval on the true target task
+        self.true_eval_initializer = envs.make_initializer('random', cfg.difficulty)
+        self.true_eval_env = envs.make('cube-env', cfg.action_type, cfg.action_repeat,
+                                  cfg.true_eval_episode_length, self.true_eval_initializer,
+                                  cfg.seed + 1,
+                                  remove_orientation=cfg.remove_orientation)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -79,13 +87,14 @@ class Workspace(object):
 
         self.step = 0
 
-    def evaluate(self):
+    def evaluate(self, env, name, video):
         average_episode_reward = 0
         average_episode_length = 0
         average_reward_infos = defaultdict(float)
         for episode in range(self.cfg.num_eval_episodes):
-            obs = self.eval_env.reset()
-            self.video_recorder.init(enabled=(episode == 0))
+            obs = env.reset()
+            if video:
+                self.video_recorder.init(enabled=(episode == 0))
             done = False
             episode_reward = 0
             episode_step = 0
@@ -93,11 +102,12 @@ class Workspace(object):
             while not done:
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(obs, sample=False)
-                obs, reward, done, info = self.eval_env.step(action)
+                obs, reward, done, info = env.step(action)
                 for k, v in info.items():
                     if k.startswith('reward_'):
                         reward_infos[k] += v
-                self.video_recorder.record()
+                if video:
+                    self.video_recorder.record()
                 episode_reward += reward
                 episode_step += 1
 
@@ -105,18 +115,19 @@ class Workspace(object):
             average_episode_length += episode_step
             for k, v in reward_infos.items():
                 average_reward_infos[k] += v / self.cfg.episode_length
-            self.video_recorder.save(f'{self.step}.mp4')
+            if video:
+                self.video_recorder.save(f'{self.step}.mp4')
 
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
-        self.logger.log('eval/episode_reward', average_episode_reward,
+        self.logger.log(name + '/episode_reward', average_episode_reward,
                         self.step)
-        self.logger.log('eval/episode_length', average_episode_length,
+        self.logger.log(name + '/episode_length', average_episode_length,
                         self.step)
         for k, v in average_reward_infos.items():
-            self.logger.log(f'eval/{k}', v / self.cfg.num_eval_episodes,
+            self.logger.log(name + f'/{k}', v / self.cfg.num_eval_episodes,
                             self.step)
-        self.logger.dump(self.step, ty='eval')
+        self.logger.dump(self.step, ty=name)
 
     def run(self):
         episode, episode_reward, episode_step, done = 0, 0, 0, True
@@ -127,7 +138,9 @@ class Workspace(object):
             if self.step % (self.cfg.eval_frequency //
                             self.cfg.action_repeat) == 0:
                 self.logger.log('eval/episode', episode, self.step)
-                self.evaluate()
+                self.evaluate(self.eval_env, 'eval', True)
+                self.logger.log('true_eval/episode', episode, self.step)
+                self.evaluate(self.true_eval_env, 'true_eval', False)
 
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:

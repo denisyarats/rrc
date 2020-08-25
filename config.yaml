@@ -1,9 +1,13 @@
 # env
-env: task3
+env: task1
 action_type: torque # torque or both
 action_repeat: 1
-difficulty: 3
 episode_length: 500
+eval_episode_length: 500
+remove_orientation: true
+# eval env
+difficulty: 1
+true_eval_episode_length: 1000
 # denis curriculum
 train_initializer: random
 eval_initializer: random
@@ -33,7 +37,7 @@ log_frequency_step: 10000
 log_save_tb: true
 save_video: true
 video_fps: 50
-device: cuda
+device: cpu
 # saving
 save_frequency: 100000
 # global params

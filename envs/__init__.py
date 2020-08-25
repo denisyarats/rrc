@@ -7,7 +7,7 @@ from rrc_simulation.gym_wrapper.envs import cube_env
 ActionType = cube_env.ActionType
 
 
-def make_initializer(name, init_p, max_step, difficulty):
+def make_initializer(name, difficulty, init_p=None, max_step=None):
     if name == 'fixed':
         return initializers.FixedInitializer(difficulty)
     elif name == 'fixed_goal':
@@ -36,7 +36,8 @@ def make(env_name,
          new_goal_freq=None,
          target_task_freq=None,
          n_random_actions=None,
-         difficulty=None):
+         difficulty=None,
+         remove_orientation=False):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -78,7 +79,11 @@ def make(env_name,
 
     env.seed(seed)
 
-    env = wrappers.FlattenObservationWrapper(env)
+    if remove_orientation:
+        excluded=['achieved_goal_orientation', 'desired_goal_orientation']
+        env = wrappers.FlattenObservationWrapper(env, excluded)
+    else:
+        env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
     action_space = env.action_space
@@ -93,6 +98,11 @@ from gym.envs.registration import register
 register(
     id="reach-v1",
     entry_point="envs.reach_env:ReachEnv",
+)
+
+register(
+    id="cube-env-v1",
+    entry_point="envs.cube_env:CubeEnv",
 )
 
 register(
