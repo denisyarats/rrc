@@ -62,12 +62,8 @@ class TaskOneEnv(gym.GoalEnv):
 
         spaces = TriFingerPlatform.spaces
 
-        object_state_space = gym.spaces.Dict({
-            "position":
-            spaces.object_position.gym,
-            "orientation":
-            spaces.object_orientation.gym,
-        })
+        object_state_space = gym.spaces.Dict(
+            {"position": spaces.object_position.gym})
 
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
@@ -123,10 +119,8 @@ class TaskOneEnv(gym.GoalEnv):
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
-        object_pos = move_cube.Pose.from_dict(
-            observation['achieved_goal']).position
-        target_pos = move_cube.Pose.from_dict(
-            observation['desired_goal']).position
+        object_pos = observation['achieved_goal']['position']
+        target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.2 * cube_radius),
@@ -245,7 +239,6 @@ class TaskOneEnv(gym.GoalEnv):
 
         self.goal = {
             "position": goal_object_pose.position,
-            "orientation": goal_object_pose.orientation,
         }
 
         # visualize the goal
@@ -292,7 +285,6 @@ class TaskOneEnv(gym.GoalEnv):
             "desired_goal": self.goal,
             "achieved_goal": {
                 "position": object_observation.position,
-                "orientation": object_observation.orientation,
             },
         }
         return observation
