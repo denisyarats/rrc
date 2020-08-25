@@ -2,29 +2,34 @@ import numpy as np
 import gym
 
 
-def flat_space(space, value=None):
+def flat_space(space, value=None, keys=[]):
     if type(space) == gym.spaces.Box:
-        yield (space, value)
+        yield (space, value, '_'.join(keys))
     else:
         assert type(space) == gym.spaces.Dict
         for key in space.spaces:
             for x in flat_space(space[key],
-                                None if value is None else value[key]):
+                                None if value is None else value[key],
+                                keys + [key]):
                 yield x
 
 
 class FlattenObservationWrapper(gym.ObservationWrapper):
-    def __init__(self, env):
+    def __init__(self, env, excluded=[]):
         super().__init__(env)
+
+        self.excluded = excluded
 
         low = [
             space.low.flatten()
-            for space, _ in flat_space(self.env.observation_space)
+            for space, _, key in flat_space(self.env.observation_space)
+            if key not in excluded
         ]
 
         high = [
             space.high.flatten()
-            for space, _ in flat_space(self.env.observation_space)
+            for space, _, key in flat_space(self.env.observation_space)
+            if key not in excluded
         ]
 
         self.observation_space = gym.spaces.Box(low=np.concatenate(low,
@@ -34,7 +39,9 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
 
     def observation(self, obs):
         observation = [
-            x.flatten() for _, x in flat_space(self.env.observation_space, obs)
+            x.flatten()
+            for _, x, key in flat_space(self.env.observation_space, obs)
+            if key not in self.excluded
         ]
 
         observation = np.concatenate(observation, axis=0)
