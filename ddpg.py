@@ -247,58 +247,34 @@ class DDPGAgent(object):
     #
     #     return target
 
-    def _retrace_target(self, Q, policy, obses, actions, rewards, next_obses,
-                        discounts, log_probs):
-        batch_size = obses.shape[0]
-        n = obses.shape[1]
-
-        target = rewards[:,0]
-        c_t = torch.ones_like(target)
-        d_t = torch.ones_like(target)
-        for t in range(1, n):
-            action_log_prob = policy(obses[:, t]).log_prob(actions[:, t]).sum(
-                -1, keepdim=True)
-            ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:, t])
-            c_t *= torch.clamp(ratio, max=1.0)
-            d_t *= discounts[:,t-1]
-
-            target += d_t * (rewards[:,t])
-
-        next_action = policy(next_obses[:, -1]).sample()
-        next_obs_action = torch.cat([next_obses[:, -1], next_action], dim=-1)
-        next_Q = Q(next_obs_action)
-        target += d_t * discounts[:,-1] * next_Q
-
-        return c_t * target
-
-    def retrace_update_critic(self, obses, actions, rewards, next_obses,
-                              discounts, log_probs, logger, step):
-        with torch.no_grad():
-            target1 = self._retrace_target(self.critic_target.Q1, self.actor,
-                                           obses, actions, rewards, next_obses,
-                                           discounts, log_probs)
-            #target2 = self._retrace_target(self.critic_target.Q2, self.actor,
-            #                               obses, actions, rewards, next_obses,
-            #                               discounts, log_probs)
-            min_target = target1 #torch.min(target1, target2)
-
-        logger.log('train_critic/target_q1', target1.mean(), step)
-        #logger.log('train_critic/target_q2', target2.mean(), step)
-        logger.log('train_critic/q', min_target.mean(), step)
-
-        Q1, Q2 = self.critic(obses[:, 0], actions[:, 0])
-        critic_loss = F.mse_loss(Q1, min_target) + F.mse_loss(Q2, min_target)
-
-        logger.log('train_critic/q1', Q1.mean(), step)
-        logger.log('train_critic/q2', Q2.mean(), step)
-        logger.log('train_critic/loss', critic_loss, step)
-
-        # Optimize the critic
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
-
-        self.critic.log(logger, step)
+    # def retrace_update_critic(self, obses, actions, rewards, next_obses,
+    #                           discounts, log_probs, logger, step):
+    #     with torch.no_grad():
+    #         target1 = self._retrace_target(self.critic_target.Q1, self.actor,
+    #                                        obses, actions, rewards, next_obses,
+    #                                        discounts, log_probs)
+    #         #target2 = self._retrace_target(self.critic_target.Q2, self.actor,
+    #         #                               obses, actions, rewards, next_obses,
+    #         #                               discounts, log_probs)
+    #         min_target = target1 #torch.min(target1, target2)
+    #
+    #     logger.log('train_critic/target_q1', target1.mean(), step)
+    #     #logger.log('train_critic/target_q2', target2.mean(), step)
+    #     logger.log('train_critic/q', min_target.mean(), step)
+    #
+    #     Q1, Q2 = self.critic(obses[:, 0], actions[:, 0])
+    #     critic_loss = F.mse_loss(Q1, min_target) + F.mse_loss(Q2, min_target)
+    #
+    #     logger.log('train_critic/q1', Q1.mean(), step)
+    #     logger.log('train_critic/q2', Q2.mean(), step)
+    #     logger.log('train_critic/loss', critic_loss, step)
+    #
+    #     # Optimize the critic
+    #     self.critic_optimizer.zero_grad()
+    #     critic_loss.backward()
+    #     self.critic_optimizer.step()
+    #
+    #     self.critic.log(logger, step)
 
     def update_actor(self, obs, logger, step):
         dist = self.actor(obs)
