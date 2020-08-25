@@ -111,7 +111,7 @@ class Workspace(object):
                 episode_reward += reward
                 episode_step += 1
 
-            average_episode_reward += episode_reward / self.cfg.episode_length
+            average_episode_reward += episode_reward / self.cfg.eval_episode_length
             average_episode_length += episode_step
             for k, v in reward_infos.items():
                 average_reward_infos[k] += v / self.cfg.episode_length
