@@ -59,6 +59,7 @@ def main():
     overrides.add(key='eval_initializer', values=['fixed_goal'])
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     overrides.add(key='lr', values=[1e-3,1e-4,1e-5])
 =======
     overrides.add(key='lr', values=[1e-5])
@@ -66,6 +67,9 @@ def main():
 =======
     overrides.add(key='lr', values=[1e-3,1e-4,1e-5])
 >>>>>>> sweep
+=======
+    overrides.add(key='lr', values=[1e-3,1e-4,1e-5])
+>>>>>>> 23ad4c5bfbe29e6758d3a0e6cc6e6f861a851527
     overrides.add(key='batch_size', values=[128])
     overrides.add(key='actor_stddev', values=[0.2])
     overrides.add(key='nstep', values=[10])

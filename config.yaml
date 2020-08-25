@@ -36,8 +36,8 @@ num_eval_episodes: 10
 log_frequency_step: 10000
 log_save_tb: true
 save_video: true
-video_fps: 50
-device: cpu
+video_fps: 10
+device: cuda
 # saving
 save_frequency: 100000
 # global params
