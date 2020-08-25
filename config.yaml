@@ -109,9 +109,9 @@ hydra:
     params:
       queue_parameters:
         slurm:
-          parition: all*
+          partition: all*
           time: 1-00
           mem: 16gb
-          cpus-per-task: 4
+          cpus_per_task: 4
           gres: gpu=1
           constraint: turing
