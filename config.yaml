@@ -1,5 +1,5 @@
 # env
-env: task1
+env: reach
 action_type: torque # torque or both
 action_repeat: 1
 difficulty: 1
@@ -10,7 +10,7 @@ eval_initializer: random
 curriculum_max_step: 1000000
 curriculum_init_p: 0.0
 # david curriculum
-use_curriculum: true
+use_curriculum: false
 start_shape: (16,)
 goal_shape: (7,)
 curriculum_buffer_capacity: 10000
@@ -44,8 +44,8 @@ actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
-random_nstep: true
-retrace: false
+random_nstep: false
+retrace: true
 
 
 agent:

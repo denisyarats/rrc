@@ -192,19 +192,47 @@ class DDPGAgent(object):
         https://arxiv.org/abs/1606.02647
     """
 
+    # def _retrace_target(self, Q, policy, obses, actions, rewards, next_obses,
+    #                     discounts, log_probs):
+    #     batch_size = obses.shape[0]
+    #     n = obses.shape[1]
+    #
+    #     obs_action = torch.cat([obses[:, -1], actions[:, -1]], dim=-1)
+    #     target = Q(obs_action)
+    #     # we can probably make this more efficient
+    #     for t in np.arange(n - 1, 0, -1):
+    #         next_action = policy(next_obses[:, t]).sample()
+    #         # should we take more action samples?
+    #         next_obs_action = torch.cat([next_obses[:, t], next_action],
+    #                                     dim=-1)
+    #         next_Q = Q(next_obs_action)
+    #         obs_action = torch.cat([obses[:, t], actions[:, t]], dim=-1)
+    #         current_Q = Q(obs_action)
+    #
+    #         action_log_prob = policy(obses[:, t]).log_prob(actions[:, t]).sum(
+    #             -1, keepdim=True)
+    #         ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:, t])
+    #         c_t = torch.clamp(ratio, max=1.0)
+    #         target = discounts[:,t] * c_t * target + \
+    #                     rewards[:,t] + discounts[:,t] * (next_Q - c_t * current_Q)
+    #     return target
+
     def _retrace_target(self, Q, policy, obses, actions, rewards, next_obses,
                         discounts, log_probs):
         batch_size = obses.shape[0]
         n = obses.shape[1]
 
-        obs_action = torch.cat([obses[:, -1], actions[:, -1]], dim=-1)
-        target = Q(obs_action)
-        # we can probably make this more efficient
-        for t in np.arange(n - 1, -1, -1):
+        next_action = policy(next_obses[:, 0]).sample()
+        next_obs_action = torch.cat([next_obses[:, 0], next_action], dim=-1)
+        next_Q = Q(next_obs_action)
+        target = rewards[:,0] + discounts[:,0] * next_Q
+
+        c_t = torch.ones_like(target)
+        d_t = torch.ones_like(target)
+
+        for t in range(1, n):
             next_action = policy(next_obses[:, t]).sample()
-            # should we take more action samples?
-            next_obs_action = torch.cat([next_obses[:, t], next_action],
-                                        dim=-1)
+            next_obs_action = torch.cat([next_obses[:, t], next_action], dim=-1)
             next_Q = Q(next_obs_action)
             obs_action = torch.cat([obses[:, t], actions[:, t]], dim=-1)
             current_Q = Q(obs_action)
@@ -212,9 +240,10 @@ class DDPGAgent(object):
             action_log_prob = policy(obses[:, t]).log_prob(actions[:, t]).sum(
                 -1, keepdim=True)
             ratio = torch.exp(action_log_prob) / torch.exp(log_probs[:, t])
-            c_t = torch.clamp(ratio, max=1.0)
-            target = discounts[:,t] * c_t * target + \
-                        rewards[:,t] + discounts[:,t] * (next_Q - c_t * current_Q)
+            c_t *= torch.clamp(ratio, max=1.0)
+            d_t *= discounts[:,t]
+
+            target += d_t * c_t * (rewards[:,t] + discounts[:,t] * next_Q - current_Q)
 
         return target
 
