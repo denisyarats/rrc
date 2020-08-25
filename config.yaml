@@ -109,7 +109,7 @@ hydra:
     params:
       queue_parameters:
         slurm:
-          partition: all*
+          partition:
           time: 1-00
           mem: 16gb
           cpus_per_task: 4
