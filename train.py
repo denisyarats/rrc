@@ -99,7 +99,6 @@ class Workspace(object):
         denominator = 1 if tag == 'true_eval' else self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
             obs = env.reset()
-            import ipdb; ipdb.set_trace()
             self.video_recorder.init(enabled=(episode == 0 and tag == 'eval'))
             done = False
             episode_reward = 0
