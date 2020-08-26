@@ -288,6 +288,7 @@ class CubeCurriculum(Curriculum):
     def __init__(self,
                  env,
                  difficulty,
+                 initializer,
                  start_shape=(9 + 7,),
                  goal_shape=(3 + 4,),
                  buffer_capacity=1000,
@@ -295,16 +296,19 @@ class CubeCurriculum(Curriculum):
                  R_max=0.9,
                  new_goal_freq=3,
                  target_task_freq=10,
-                 n_random_actions=50):
+                 n_random_actions=50,
+                 remove_orientation=False):
         super().__init__(env, start_shape, goal_shape, buffer_capacity, R_min,
                          R_max, new_goal_freq, target_task_freq,
                          n_random_actions)
         self.difficulty = difficulty
+        self.remove_orientation = remove_orientation
+        self.initializer = initializer
         return
 
     def sample_new_start_and_goal(self):
         # set finger tips near the corners of the cube, and cube near target
-        goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
+        goal_dict = self.initializer.get_goal()
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
 
         cube_init_pos = np.array(
@@ -335,16 +339,28 @@ class CubeCurriculum(Curriculum):
 
     def reset_simulator(self, start, goal):
         del self.env.platform
-        self.env.platform = TriFingerPlatform(
-            visualization=self.env.visualization,
-            initial_robot_position=start[:9],
-            initial_object_pose=move_cube.Pose(position=start[9:12],
-                                               orientation=start[12:]))
 
-        self.env.goal = {
-            "position": goal[:3],
-            "orientation": goal[3:],
-        }
+        if self.remove_orientation:
+            self.env.platform = TriFingerPlatform(
+                visualization=self.env.visualization,
+                initial_robot_position=start[:9],
+                initial_object_pose=move_cube.Pose(position=start[9:12],
+                                                   orientation=np.array([0,0,0,1])))
+
+            self.env.goal = {
+                "position": goal,
+            }
+        else:
+            self.env.platform = TriFingerPlatform(
+                visualization=self.env.visualization,
+                initial_robot_position=start[:9],
+                initial_object_pose=move_cube.Pose(position=start[9:12],
+                                                   orientation=start[12:]))
+
+            self.env.goal = {
+                "position": goal[:3],
+                "orientation": goal[3:],
+            }
 
         if self.env.visualization:
             self.goal_marker = visual_objects.CubeMarker(

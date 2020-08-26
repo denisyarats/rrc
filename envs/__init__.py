@@ -67,6 +67,7 @@ def make(env_name,
                                              n_random_actions=n_random_actions)
         else:
             env = curriculum.CubeCurriculum(env,
+                                            initializer=initializer,
                                             start_shape=start_shape,
                                             goal_shape=goal_shape,
                                             buffer_capacity=buffer_capacity,
