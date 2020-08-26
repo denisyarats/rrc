@@ -124,10 +124,10 @@ class TaskOneEnv(gym.GoalEnv):
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.1 * cube_radius),
-                                     margin=0.2 * arena_radius,
+                                     margin= arena_radius,
                                      sigmoid='long_tail')
 
-        # compute reward to see that each fingert is close to the cube
+        # compute reward to see that each finger is close to the cube
         grasp = 0
         #hand_away = 0
         for finger_id in finger_ids:
@@ -151,7 +151,7 @@ class TaskOneEnv(gym.GoalEnv):
         #hand_away /= len(finger_ids)
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
-        in_place_weight = 1.0
+        in_place_weight = 3.0
 
         info['reward_grasp'] = grasp
         #info['reward_hand_away'] = hand_away
