@@ -151,7 +151,7 @@ class TaskOneEnv(gym.GoalEnv):
         low = low / 3.
 
 
-        in_place_weight = 3.0
+        in_place_weight = 10.0
 
         info['reward_grasp'] = grasp
         info['reward_low'] = low
