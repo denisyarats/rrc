@@ -137,7 +137,7 @@ class TaskOneEnv(gym.GoalEnv):
                 grasp,
                 rewards.tolerance(finger_to_object,
                                   bounds=(0, cube_radius),
-                                  margin=0.2 * arena_radius,
+                                  margin=cube_radius,
                                   sigmoid='long_tail'))
 
         # reward for low finger tips
