@@ -151,7 +151,7 @@ class TaskOneEnv(gym.GoalEnv):
         #hand_away /= len(finger_ids)
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
-        in_place_weight = 5.0
+        in_place_weight = 1.0
 
         info['reward_grasp'] = grasp
         #info['reward_hand_away'] = hand_away
