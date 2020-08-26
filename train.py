@@ -19,6 +19,8 @@ from replay_buffer import ReplayBuffer
 from video import VideoRecorder
 from collections import defaultdict
 
+from rrc_simulation.tasks import move_cube
+
 torch.backends.cudnn.benchmark = True
 
 
@@ -39,6 +41,7 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
 
+        # make initializers
         self.train_initializer = envs.make_initializer(cfg.train_initializer,
                                                        cfg.difficulty,
                                                        cfg.curriculum_init_p,
@@ -47,24 +50,25 @@ class Workspace(object):
                                                       cfg.difficulty,
                                                       cfg.curriculum_init_p,
                                                       cfg.curriculum_max_step)
+        self.true_eval_initializer = envs.make_initializer(
+            'random', cfg.difficulty)
+
+        # make envs
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                              cfg.episode_length, self.train_initializer,
                              cfg.seed, cfg.use_curriculum, cfg.start_shape,
                              cfg.goal_shape, cfg.curriculum_buffer_capacity,
                              cfg.R_min, cfg.R_max, cfg.new_goal_freq,
-                             cfg.target_task_freq, cfg.n_random_actions,
-                             cfg.difficulty,
-                             remove_orientation=cfg.remove_orientation)
+                             cfg.target_task_freq, cfg.n_random_actions)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                                   cfg.episode_length, self.eval_initializer,
-                                  cfg.seed + 1, False,
-                                  remove_orientation=cfg.remove_orientation)
+                                  cfg.seed + 1, False)
         # always eval on the true target task
-        self.true_eval_initializer = envs.make_initializer('random', cfg.difficulty)
-        self.true_eval_env = envs.make('cube-env', cfg.action_type, cfg.action_repeat,
-                                  cfg.true_eval_episode_length, self.true_eval_initializer,
-                                  cfg.seed + 1,
-                                  remove_orientation=cfg.remove_orientation)
+        self.true_eval_env = envs.make('cube', cfg.action_type,
+                                       cfg.action_repeat,
+                                       move_cube.episode_length,
+                                       self.true_eval_initializer,
+                                       cfg.seed + 1)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -87,14 +91,16 @@ class Workspace(object):
 
         self.step = 0
 
-    def evaluate(self, env, name, video):
+    def evaluate(self, env, tag='eval'):
+        assert tag in ['eval', 'true_eval']
         average_episode_reward = 0
         average_episode_length = 0
         average_reward_infos = defaultdict(float)
+        denominator = 1 if tag == 'true_eval' else self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
             obs = env.reset()
-            if video:
-                self.video_recorder.init(enabled=(episode == 0))
+            import ipdb; ipdb.set_trace()
+            self.video_recorder.init(enabled=(episode == 0 and tag == 'eval'))
             done = False
             episode_reward = 0
             episode_step = 0
@@ -106,41 +112,40 @@ class Workspace(object):
                 for k, v in info.items():
                     if k.startswith('reward_'):
                         reward_infos[k] += v
-                if video:
-                    self.video_recorder.record()
+                self.video_recorder.record()
                 episode_reward += reward
                 episode_step += 1
 
-            average_episode_reward += episode_reward / self.cfg.episode_length
+            average_episode_reward += episode_reward / denominator
             average_episode_length += episode_step
             for k, v in reward_infos.items():
-                average_reward_infos[k] += v / self.cfg.episode_length
-            if video:
-                self.video_recorder.save(f'{self.step}.mp4')
+                average_reward_infos[k] += v / denominator
+            self.video_recorder.save(f'{self.step}.mp4')
 
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
-        self.logger.log(name + '/episode_reward', average_episode_reward,
+        self.logger.log(tag + '/episode_reward', average_episode_reward,
                         self.step)
-        self.logger.log(name + '/episode_length', average_episode_length,
+        self.logger.log(tag + '/episode_length', average_episode_length,
                         self.step)
         for k, v in average_reward_infos.items():
-            self.logger.log(name + f'/{k}', v / self.cfg.num_eval_episodes,
+            self.logger.log(tag + f'/{k}', v / self.cfg.num_eval_episodes,
                             self.step)
-        self.logger.dump(self.step, ty=name)
+        self.logger.dump(self.step, ty=tag)
 
     def run(self):
         episode, episode_reward, episode_step, done = 0, 0, 0, True
         reward_infos = defaultdict(float)
         start_time = time.time()
+        assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
         while self.step < self.cfg.num_train_steps:
             # evaluate agent periodically
             if self.step % (self.cfg.eval_frequency //
                             self.cfg.action_repeat) == 0:
                 self.logger.log('eval/episode', episode, self.step)
-                self.evaluate(self.eval_env, 'eval', True)
+                self.evaluate(self.eval_env, tag='eval')
                 self.logger.log('true_eval/episode', episode, self.step)
-                self.evaluate(self.true_eval_env, 'true_eval', False)
+                self.evaluate(self.true_eval_env, tag='true_eval')
 
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:
@@ -173,8 +178,6 @@ class Workspace(object):
 
                 self.logger.log('train/episode', episode, self.step)
                 self.train_initializer.log(self.logger, self.step)
-                #self.logger.log('train/curriculum_p', self.train_initializer.p, self.step)
-                #self.logger.log('train/curriculum_distance', self.train_initializer.distance, self.step)
 
             # sample action for data collection
             if self.step < self.cfg.num_seed_steps:

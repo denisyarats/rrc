@@ -63,8 +63,12 @@ class TaskThreeEnv(gym.GoalEnv):
         spaces = TriFingerPlatform.spaces
 
         object_state_space = gym.spaces.Dict(
-            {"position": spaces.object_position.gym})
-
+            {
+                "position": spaces.object_position.gym,
+                "orientation": spaces.object_orientation.gym,
+            }
+        )
+        
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
@@ -130,11 +134,12 @@ class TaskThreeEnv(gym.GoalEnv):
                                      margin=cube_radius,
                                      sigmoid='long_tail')
 
-        above_ground = rewards.tolerance(object_pos[2],
-                                         bounds=(target_pos[2] - 0.2 * min_height,
-                                                 target_pos[2] + 0.2 * min_height),
-                                         margin=0.8 * min_height,
-                                         sigmoid='long_tail')
+        above_ground = rewards.tolerance(
+            object_pos[2],
+            bounds=(target_pos[2] - 0.2 * min_height,
+                    target_pos[2] + 0.2 * min_height),
+            margin=0.8 * min_height,
+            sigmoid='long_tail')
 
         # compute reward to see that each fingert is close to the cube
         grasp = 0
@@ -243,6 +248,7 @@ class TaskThreeEnv(gym.GoalEnv):
 
         self.goal = {
             "position": goal_object_pose.position,
+            "orientation": goal_object_pose.orientation,
         }
 
         # visualize the goal
@@ -289,6 +295,7 @@ class TaskThreeEnv(gym.GoalEnv):
             "desired_goal": self.goal,
             "achieved_goal": {
                 "position": object_observation.position,
+                "orientation": object_observation.orientation,
             },
         }
         return observation

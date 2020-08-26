@@ -35,9 +35,7 @@ def make(env_name,
          R_max=None,
          new_goal_freq=None,
          target_task_freq=None,
-         n_random_actions=None,
-         difficulty=None,
-         remove_orientation=False):
+         n_random_actions=None):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -75,15 +73,17 @@ def make(env_name,
                                             new_goal_freq=new_goal_freq,
                                             target_task_freq=target_task_freq,
                                             n_random_actions=n_random_actions,
-                                            difficulty=difficulty)
+                                            difficulty=initializer.difficulty)
 
     env.seed(seed)
 
-    if remove_orientation:
-        excluded=['achieved_goal_orientation', 'desired_goal_orientation']
-        env = wrappers.FlattenObservationWrapper(env, excluded)
-    else:
-        env = wrappers.FlattenObservationWrapper(env)
+    excluded = []
+    # for task 1, 2, and 3 we don't need orientation
+    if initializer.difficulty in [1, 2, 3]:
+        excluded += ['achieved_goal_orientation']
+        excluded += ['desired_goal_orientation']
+    env = wrappers.FlattenObservationWrapper(env, excluded)
+
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
     action_space = env.action_space
@@ -101,7 +101,7 @@ register(
 )
 
 register(
-    id="cube-env-v1",
+    id="cube-v1",
     entry_point="envs.cube_env:CubeEnv",
 )
 

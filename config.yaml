@@ -1,13 +1,9 @@
 # env
-env: task1
-action_type: torque # torque or both
+difficulty: 1
+env: task${difficulty}
+action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
-eval_episode_length: 500
-remove_orientation: true
-# eval env
-difficulty: 1
-true_eval_episode_length: 1000
 # denis curriculum
 train_initializer: random
 eval_initializer: random

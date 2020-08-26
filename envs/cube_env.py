@@ -11,59 +11,9 @@ from rrc_simulation.tasks import move_cube
 from rrc_simulation.gym_wrapper.envs import cube_env
 ActionType = cube_env.ActionType
 
-class RandomInitializer:
-    """Initializer that samples random initial states and goals."""
-
-    def __init__(self, difficulty):
-        """Initialize.
-        Args:
-            difficulty (int):  Difficulty level for sampling goals.
-        """
-        self.difficulty = difficulty
-
-    def get_initial_state(self):
-        """Get a random initial object pose (always on the ground)."""
-        return move_cube.sample_goal(difficulty=-1)
-
-    def get_goal(self):
-        """Get a random goal depending on the difficulty."""
-        return move_cube.sample_goal(difficulty=self.difficulty)
-
-
-class FixedInitializer:
-    """Initializer that uses fixed values for initial pose and goal."""
-
-    def __init__(self, difficulty, initial_state, goal):
-        """Initialize.
-        Args:
-            difficulty (int):  Difficulty level of the goal.  This is still
-                needed even for a fixed goal, as it is also used for computing
-                the reward (the cost function is different for the different
-                levels).
-            initial_state (move_cube.Pose):  Initial pose of the object.
-            goal (move_cube.Pose):  Goal pose of the object.
-        Raises:
-            Exception:  If initial_state or goal are not valid.  See
-            :meth:`move_cube.validate_goal` for more information.
-        """
-        move_cube.validate_goal(initial_state)
-        move_cube.validate_goal(goal)
-        self.difficulty = difficulty
-        self.initial_state = initial_state
-        self.goal = goal
-
-    def get_initial_state(self):
-        """Get the initial state that was set in the constructor."""
-        return self.initial_state
-
-    def get_goal(self):
-        """Get the goal that was set in the constructor."""
-        return self.goal
-
 
 class CubeEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
-
     def __init__(
         self,
         initializer,
@@ -108,40 +58,39 @@ class CubeEnv(gym.GoalEnv):
 
         spaces = TriFingerPlatform.spaces
 
-        object_state_space = gym.spaces.Dict(
-            {
-                "position": spaces.object_position.gym,
-                "orientation": spaces.object_orientation.gym,
-            }
-        )
+        object_state_space = gym.spaces.Dict({
+            "position":
+            spaces.object_position.gym,
+            "orientation":
+            spaces.object_orientation.gym,
+        })
 
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
             self.action_space = spaces.robot_position.gym
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
-            self.action_space = gym.spaces.Dict(
-                {
-                    "torque": spaces.robot_torque.gym,
-                    "position": spaces.robot_position.gym,
-                }
-            )
+            self.action_space = gym.spaces.Dict({
+                "torque":
+                spaces.robot_torque.gym,
+                "position":
+                spaces.robot_position.gym,
+            })
         else:
             raise ValueError("Invalid action_type")
 
-        self.observation_space = gym.spaces.Dict(
-            {
-                "observation": gym.spaces.Dict(
-                    {
-                        "position": spaces.robot_position.gym,
-                        "velocity": spaces.robot_velocity.gym,
-                        "torque": spaces.robot_torque.gym,
-                    }
-                ),
-                "desired_goal": object_state_space,
-                "achieved_goal": object_state_space,
-            }
-        )
+        self.observation_space = gym.spaces.Dict({
+            "observation":
+            gym.spaces.Dict({
+                "position": spaces.robot_position.gym,
+                "velocity": spaces.robot_velocity.gym,
+                "torque": spaces.robot_torque.gym,
+            }),
+            "desired_goal":
+            object_state_space,
+            "achieved_goal":
+            object_state_space,
+        })
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """Compute the reward for the given achieved and desired goal.
@@ -189,8 +138,7 @@ class CubeEnv(gym.GoalEnv):
 
         if not self.action_space.contains(action):
             raise ValueError(
-                "Given action is not contained in the action space."
-            )
+                "Given action is not contained in the action space.")
 
         num_steps = self.frameskip
 
@@ -231,7 +179,7 @@ class CubeEnv(gym.GoalEnv):
 
         # initialize simulation
         initial_robot_position = TriFingerPlatform.spaces.robot_position.default
-        initial_object_pose=self.initializer.get_initial_state()
+        initial_object_pose = self.initializer.get_initial_state()
         goal_object_pose = self.initializer.get_goal()
 
         self.platform = TriFingerPlatform(
@@ -300,8 +248,7 @@ class CubeEnv(gym.GoalEnv):
             robot_action = self.platform.Action(position=gym_action)
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             robot_action = self.platform.Action(
-                torque=gym_action["torque"], position=gym_action["position"]
-            )
+                torque=gym_action["torque"], position=gym_action["position"])
         else:
             raise ValueError("Invalid action_type")
 
