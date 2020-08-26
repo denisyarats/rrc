@@ -59,16 +59,16 @@ def main():
     overrides.add(key='R_max', values=[0.8])
     overrides.add(key='new_goal_freq', values=[50])
     overrides.add(key='target_task_freq', values=[20])
-    overrides.add(key='n_random_actions', values=[10, 50, 100])
+    overrides.add(key='n_random_actions', values=[2,10])
 
     overrides.add(key='action_type', values=['torque'])
     overrides.add(key='episode_length', values=[200])
     overrides.add(key='train_initializer', values=['fixed_goal'])
     overrides.add(key='eval_initializer', values=['fixed_goal'])
-    overrides.add(key='lr', values=[1e-3,1e-4])
+    overrides.add(key='lr', values=[1e-4])
     overrides.add(key='batch_size', values=[128])
     overrides.add(key='actor_stddev', values=[0.2])
-    overrides.add(key='nstep', values=[5])
+    overrides.add(key='nstep', values=[1,5])
     # seeds
     overrides.add(key='seed', values=[1])
 

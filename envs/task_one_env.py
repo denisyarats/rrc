@@ -120,7 +120,7 @@ class TaskOneEnv(gym.GoalEnv):
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
-        object_pos = observation['achieved_goal']['position']
+        object_pos = observation['achieved_goal']['position'] + observation['desired_goal']['position']
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
@@ -273,6 +273,7 @@ class TaskOneEnv(gym.GoalEnv):
         move_cube.random = self.np_random
         return [seed]
 
+
     def _create_observation(self, t):
         robot_observation = self.platform.get_robot_observation(t)
         object_observation = self.platform.get_object_pose(t)
@@ -285,8 +286,8 @@ class TaskOneEnv(gym.GoalEnv):
             },
             "desired_goal": self.goal,
             "achieved_goal": {
-                "position": object_observation.position,
-                "orientation": object_observation.orientation,
+                "position": self.goal["position"] - object_observation.position,
+                "orientation": self.goal["orientation"] - object_observation.orientation,
             },
         }
         return observation
