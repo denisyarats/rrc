@@ -56,7 +56,7 @@ class Workspace(object):
                              cfg.difficulty,
                              remove_orientation=cfg.remove_orientation)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, self.eval_initializer,
+                                  cfg.eval_episode_length, self.eval_initializer,
                                   cfg.seed + 1, False,
                                   remove_orientation=cfg.remove_orientation)
         # always eval on the true target task
@@ -114,7 +114,7 @@ class Workspace(object):
             average_episode_reward += episode_reward / self.cfg.eval_episode_length
             average_episode_length += episode_step
             for k, v in reward_infos.items():
-                average_reward_infos[k] += v / self.cfg.episode_length
+                average_reward_infos[k] += v / self.cfg.eval_episode_length
             if video:
                 self.video_recorder.save(f'{self.step}.mp4')
 
