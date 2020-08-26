@@ -46,6 +46,7 @@ def main():
     overrides.add(key='experiment', values=[args.experiment])
     overrides.add(key='log_save_tb', values=['false'])
     overrides.add(key='video_fps', values=[10])
+    overrides.add(key='device', values=['cuda'])
 
     overrides.add(key='env', values=['task1'])
     overrides.add(key='num_train_steps', values=[100000])

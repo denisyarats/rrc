@@ -147,7 +147,8 @@ class TaskOneEnv(gym.GoalEnv):
             low += rewards.tolerance(z_pos,
                                   bounds=(0, 0.5 * cube_radius),
                                   margin=cube_radius,
-                                  sigmoid='long_tail'))
+                                  sigmoid='long_tail')
+        low = low / 3.
 
 
         in_place_weight = 3.0
