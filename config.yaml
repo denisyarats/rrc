@@ -4,6 +4,12 @@ env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
+# teacher
+use_teacher: false
+teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.24/143959_ddpg_baseline/6/model
+teacher_model_step: 9500000
+teacher_init_p: 0.0
+teacher_max_step: 1000000
 # denis curriculum
 train_initializer: random
 eval_initializer: random
@@ -34,7 +40,7 @@ log_frequency_step: 10000
 log_save_tb: true
 save_video: true
 video_fps: 50
-device: cpu
+device: cuda
 # saving
 save_frequency: 100000
 # global params
@@ -46,7 +52,6 @@ hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
 random_nstep: true
-retrace: false
 
 
 agent:
@@ -68,8 +73,7 @@ agent:
     nstep: ${nstep}
     use_ln: true
     head_init_coef: 1.0
-    retrace: ${retrace}
-
+    
 critic:
   class: ddpg.Critic
   params:

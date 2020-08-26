@@ -81,6 +81,10 @@ class Workspace(object):
         ]
         self.agent = hydra.utils.instantiate(cfg.agent)
 
+        if cfg.use_teacher:
+            self.teacher = hydra.utils.instantiate(cfg.agent)
+            self.teacher.load(cfg.teacher_model_dir, cfg.teacher_model_step)
+
         self.replay_buffer = ReplayBuffer(obs_space.shape, action_space.shape,
                                           cfg.replay_buffer_capacity,
                                           self.device, cfg.random_nstep)
@@ -135,6 +139,7 @@ class Workspace(object):
     def run(self):
         episode, episode_reward, episode_step, done = 0, 0, 0, True
         reward_infos = defaultdict(float)
+        teacher_uses = 0
         start_time = time.time()
         assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
         while self.step < self.cfg.num_train_steps:
@@ -161,6 +166,7 @@ class Workspace(object):
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
+                self.logger.log('train/teacher_uses', teacher_uses, self.step)
                 self.logger.log('train/episode_reward',
                                 episode_reward / self.cfg.episode_length,
                                 self.step)
@@ -175,6 +181,7 @@ class Workspace(object):
                 episode_step = 0
                 episode += 1
                 reward_infos = defaultdict(float)
+                teacher_uses = 0
 
                 self.logger.log('train/episode', episode, self.step)
                 self.train_initializer.log(self.logger, self.step)
@@ -185,13 +192,16 @@ class Workspace(object):
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),
                                            action_space.shape)
-                log_prob = -np.log(
-                    np.prod(action_space.high - action_space.low))
             else:
-                with utils.eval_mode(self.agent):
-                    action, log_prob = self.agent.act(obs,
-                                                      sample=True,
-                                                      log_prob=True)
+                ratio = max(self.cfg.teacher_max_step - self.step,
+                            0) / self.cfg.teacher_max_step
+                teacher_p = self.cfg.teacher_init_p * ratio
+                self.logger.log('train/teacher_p', teacher_p, self.step)
+                use_teacher = self.cfg.use_teacher and np.random.rand() < teacher_p
+                teacher_uses += int(use_teacher)
+                agent = self.teacher if use_teacher else self.agent
+                with utils.eval_mode(agent):
+                    action = agent.act(obs, sample=True)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:
@@ -205,8 +215,7 @@ class Workspace(object):
                 if k.startswith('reward_'):
                     reward_infos[k] += v
 
-            self.replay_buffer.add(obs, action, reward, next_obs, done,
-                                   log_prob)
+            self.replay_buffer.add(obs, action, reward, next_obs, done)
 
             obs = next_obs
             episode_step += 1
