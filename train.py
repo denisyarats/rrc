@@ -143,8 +143,9 @@ class Workspace(object):
                             self.cfg.action_repeat) == 0:
                 self.logger.log('eval/episode', episode, self.step)
                 self.evaluate(self.eval_env, tag='eval')
-                self.logger.log('true_eval/episode', episode, self.step)
-                self.evaluate(self.true_eval_env, tag='true_eval')
+                if self.cfg.run_true_eval:
+                    self.logger.log('true_eval/episode', episode, self.step)
+                    self.evaluate(self.true_eval_env, tag='true_eval')
 
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:
