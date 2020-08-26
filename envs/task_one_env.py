@@ -124,12 +124,11 @@ class TaskOneEnv(gym.GoalEnv):
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.1 * cube_radius),
-                                     margin= arena_radius,
+                                     margin= 0.5 * arena_radius,
                                      sigmoid='long_tail')
 
         # compute reward to see that each finger is close to the cube
         grasp = 0
-        #hand_away = 0
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
@@ -140,25 +139,24 @@ class TaskOneEnv(gym.GoalEnv):
                                   margin=0.2 * arena_radius,
                                   sigmoid='long_tail'))
 
-            #finger_to_target = np.linalg.norm(finger_pos - target_pos)
-            #hand_away += rewards.tolerance(finger_to_target,
-            #                               bounds=(4 * radius, np.inf),
-            #                               margin=3 * radius,
-            #                               sigmoid='long_tail')
+        # reward for low finger tips
+        low = 0
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+            z_pos = finger_pos[-1]
+            low += rewards.tolerance(z_pos,
+                                  bounds=(0, 0.5 * cube_radius),
+                                  margin=cube_radius,
+                                  sigmoid='long_tail'))
 
-        #import ipdb; ipdb.set_trace()
-        #grasp /= len(finger_ids)
-        #hand_away /= len(finger_ids)
 
-        #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
         in_place_weight = 3.0
 
         info['reward_grasp'] = grasp
-        #info['reward_hand_away'] = hand_away
-        #info['reward_grasp_or_hand_away'] = grasp_or_hand_away
+        info['reward_low'] = low
         info['reward_in_place'] = in_place
 
-        reward = (grasp + in_place_weight * in_place) / (1.0 + in_place_weight)
+        reward = (grasp + low + in_place_weight * in_place) / (2.0 + in_place_weight)
         return reward
 
     def step(self, action):
