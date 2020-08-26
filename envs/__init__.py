@@ -77,13 +77,12 @@ def make(env_name,
 
     env.seed(seed)
 
-    excluded = []
+    #excluded = []
     # for task 1, 2, and 3 we don't need orientation
-    if initializer.difficulty in [1, 2, 3]:
-        excluded += ['achieved_goal_orientation']
-        excluded += ['desired_goal_orientation']
-    env = wrappers.FlattenObservationWrapper(env, excluded)
-
+    #if initializer.difficulty in [1, 2, 3]:
+    #    excluded += ['achieved_goal_orientation']
+    #    excluded += ['desired_goal_orientation']
+    env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
     action_space = env.action_space
@@ -118,4 +117,9 @@ register(
 register(
     id="task3-v1",
     entry_point="envs.task_three_env:TaskThreeEnv",
+)
+
+register(
+    id="task4-v1",
+    entry_point="envs.task_four_env:TaskFourEnv",
 )
