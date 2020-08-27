@@ -188,7 +188,11 @@ class TaskOneEnv(gym.GoalEnv):
             - info (dict): info dictionary containing the difficulty level of
               the goal.
         """
-        action = self.observation['observation']['position'] + action
+        if self.action_type == ActionType.POSITION:
+            action = self.observation['observation']['position'] + action
+            action = np.clip(action, self.action_space.low, self.action_space.high)
+
+
         if self.platform is None:
             raise RuntimeError("Call `reset()` before starting to step.")
 

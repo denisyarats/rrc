@@ -1,6 +1,6 @@
 # env
 env: task1
-action_type: torque # torque or both
+action_type: position # torque or both
 action_repeat: 1
 episode_length: 200
 eval_episode_length: 500
