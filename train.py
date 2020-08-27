@@ -172,6 +172,7 @@ class Workspace(object):
                 reward_infos = defaultdict(float)
 
                 self.logger.log('train/episode', episode, self.step)
+                self.logger.log('train/radius', self.env.radius, self.step)
                 self.train_initializer.log(self.logger, self.step)
                 #self.logger.log('train/curriculum_p', self.train_initializer.p, self.step)
                 #self.logger.log('train/curriculum_distance', self.train_initializer.distance, self.step)

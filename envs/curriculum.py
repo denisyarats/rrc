@@ -399,6 +399,8 @@ class CubeCurriculum(Curriculum):
         return ordered_goals.flatten()
 
 
+from scipy.spatial.transform import Rotation
+
 class CubePosCurriculum(Curriculum):
     def __init__(self,
                  env,
@@ -429,9 +431,9 @@ class CubePosCurriculum(Curriculum):
         goal_dict = self.initializer.get_goal()
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
 
-        cube_init_pos = np.array(
-            [goal[0], goal[1], move_cube._CUBE_WIDTH / 2.])
-        cube_init_or = np.array([0, 0, 0, 1])
+        cube_init_pos = self._random_xy_disp(goal_dict.position, self.radius)
+        cube_init_or = self._random_yaw_orientation()
+
         tip_init = self._choose_tip_init(
             move_cube.Pose(position=cube_init_pos, orientation=cube_init_or))
         start = np.concatenate([tip_init, cube_init_pos, cube_init_or])
@@ -440,6 +442,7 @@ class CubePosCurriculum(Curriculum):
     def sample_target_start_and_goal(self):
         # standard task init
         robot_init = TriFingerPlatform.spaces.robot_position.default
+        self.initializer.reset()
         cube_init = self.initializer.get_initial_state()
         start = np.concatenate(
             [robot_init, cube_init.position, cube_init.orientation])
@@ -456,6 +459,8 @@ class CubePosCurriculum(Curriculum):
         return start
 
     def reset_simulator(self, start, goal):
+        self.radius *= 1.0 + self.epsilon
+
         del self.env.platform
 
         if self.remove_orientation:
@@ -518,15 +523,20 @@ class CubePosCurriculum(Curriculum):
 
     def _random_xy_disp(self, pos, radius):
         # sample uniform position in circle (https://stackoverflow.com/a/50746409)
-        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
-            np.random.random())
+        max_radius = move_cube._max_cube_com_distance_to_center
+        radius = min(radius, max_radius)
+        r = radius * np.sqrt(np.random.random())
         theta = np.random.uniform(0, 2 * np.pi)
-
-        # x,y-position of the cube
-        x = radius * np.cos(theta)
-        y = radius * np.sin(theta)
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
 
         candidate = np.array([x+pos[0], y+pos[1], pos[2]])
-        if np.sqrt(candidate[0]**2 + candidate[1]**2):
-            pass
-        return new_pos
+        norm = np.sqrt(candidate[0]**2 + candidate[1]**2)
+        if norm > max_radius:
+            candidate[:1] = candidate[:1] * max_radius / norm
+        return candidate
+
+    def _random_yaw_orientation(self):
+        yaw = np.random.uniform(0, 2 * np.pi)
+        orientation = Rotation.from_euler("z", yaw)
+        return orientation.as_quat()

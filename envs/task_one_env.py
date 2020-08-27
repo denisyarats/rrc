@@ -90,16 +90,14 @@ class TaskOneEnv(gym.GoalEnv):
         self.observation_space = gym.spaces.Dict({
             "observation":
             gym.spaces.Dict({
-                "position": xyz_space,#spaces.robot_position.gym,
-                "velocity": xyz_vel_space,#spaces.robot_velocity.gym,
+                "position": spaces.robot_position.gym,
+                "velocity": spaces.robot_velocity.gym,
                 "torque": spaces.robot_torque.gym,
             }),
-            "desired_goal":
-            object_state_space,
-            "achieved_goal":
-            object_state_space,
-            #"robot_xyz":
-            #xyz_space,
+            "desired_goal": object_state_space,
+            "achieved_goal": object_state_space,
+            "robot_pos": xyz_space,
+            "robot_vel": xyz_vel_space,
         })
 
     def compute_reward(self, observation, info):
@@ -139,15 +137,8 @@ class TaskOneEnv(gym.GoalEnv):
 
         # compute reward to see that each finger is close to the cube
         grasp = 0
-        # for finger_id in finger_ids:
-        #     finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-        #     finger_to_object = np.linalg.norm(finger_pos - object_pos)
-        #     grasp += rewards.tolerance(finger_to_object,
-        #                           bounds=(0, cube_radius),
-        #                           margin=cube_radius,
-        #                           sigmoid='long_tail')
-        for i in range(3):
-            finger_pos = observation['observation']['position'][3*i:3*i+3]
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
             grasp += rewards.tolerance(finger_to_object,
                                   bounds=(0, cube_radius),
@@ -167,7 +158,7 @@ class TaskOneEnv(gym.GoalEnv):
         # low = low / 3.
 
 
-        in_place_weight = 2.0
+        in_place_weight = 1.0
 
         info['reward_grasp'] = grasp
         #info['reward_low'] = low
@@ -297,8 +288,8 @@ class TaskOneEnv(gym.GoalEnv):
 
         observation = {
             "observation": {
-                "position": robot_pos,#robot_observation.position,
-                "velocity": robot_vel,#robot_observation.velocity,
+                "position": robot_observation.position,
+                "velocity": robot_observation.velocity,
                 "torque": robot_observation.torque,
             },
             "desired_goal": self.goal,
@@ -306,7 +297,8 @@ class TaskOneEnv(gym.GoalEnv):
                 "position": self.goal["position"] - object_observation.position,
                 "orientation": self.goal["orientation"] - object_observation.orientation,
             },
-            #"robot_xyz": self._get_robot_xyz()
+            "robot_pos": robot_pos,
+            "robot_vel": robot_vel,
         }
         return observation
 

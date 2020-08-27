@@ -66,7 +66,7 @@ def make(env_name,
                                              target_task_freq=target_task_freq,
                                              n_random_actions=n_random_actions)
         else:
-            env = curriculum.CubeCurriculum(env,
+            env = curriculum.CubePosCurriculum(env,
                                             initializer=initializer,
                                             start_shape=start_shape,
                                             goal_shape=goal_shape,
