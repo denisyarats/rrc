@@ -423,11 +423,12 @@ class CubePosCurriculum(Curriculum):
         self.initializer = initializer
 
         self.radius = 0.02
-        self.epsilon = 0.01
+        self.init_radius = 0.02
+        self.epsilon = 0.0001
         return
 
     def sample_new_start_and_goal(self):
-        # set finger tips near the corners of the cube, and cube near target
+        # set finger tips near the corners of the cubet
         goal_dict = self.initializer.get_goal()
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
 
@@ -459,7 +460,7 @@ class CubePosCurriculum(Curriculum):
         return start
 
     def reset_simulator(self, start, goal):
-        self.radius *= 1.0 + self.epsilon
+        self.radius = self.init_radius + self.n_resets * self.epsilon
 
         del self.env.platform
 

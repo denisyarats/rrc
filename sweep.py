@@ -58,7 +58,7 @@ def main():
     overrides.add(key='R_min', values=[0.2])
     overrides.add(key='R_max', values=[0.8])
     overrides.add(key='new_goal_freq', values=[2,10,50])
-    overrides.add(key='target_task_freq', values=[15,100])
+    overrides.add(key='target_task_freq', values=[15,1000])
     overrides.add(key='n_random_actions', values=[0])
 
     overrides.add(key='action_type', values=['torque'])
