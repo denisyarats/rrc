@@ -57,9 +57,9 @@ def main():
     overrides.add(key='use_curriculum', values=['true'])
     overrides.add(key='R_min', values=[0.2])
     overrides.add(key='R_max', values=[0.8])
-    overrides.add(key='new_goal_freq', values=[50])
-    overrides.add(key='target_task_freq', values=[20])
-    overrides.add(key='n_random_actions', values=[2,10])
+    overrides.add(key='new_goal_freq', values=[10])
+    overrides.add(key='target_task_freq', values=[15])
+    overrides.add(key='n_random_actions', values=[10])
 
     overrides.add(key='action_type', values=['torque'])
     overrides.add(key='episode_length', values=[200])

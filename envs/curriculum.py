@@ -420,7 +420,8 @@ class CubePosCurriculum(Curriculum):
         self.remove_orientation = remove_orientation
         self.initializer = initializer
 
-        self.radius = 0
+        self.radius = 0.02
+        self.epsilon = 0.01
         return
 
     def sample_new_start_and_goal(self):
@@ -439,11 +440,11 @@ class CubePosCurriculum(Curriculum):
     def sample_target_start_and_goal(self):
         # standard task init
         robot_init = TriFingerPlatform.spaces.robot_position.default
-        cube_init = move_cube.sample_goal(difficulty=-1)
+        cube_init = self.initializer.get_initial_state()
         start = np.concatenate(
             [robot_init, cube_init.position, cube_init.orientation])
 
-        goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
+        goal_dict = self.initializer.get_goal()
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
         return start, goal
 
@@ -514,3 +515,18 @@ class CubePosCurriculum(Curriculum):
         ordered_goals[:, -1] /= 2
 
         return ordered_goals.flatten()
+
+    def _random_xy_disp(self, pos, radius):
+        # sample uniform position in circle (https://stackoverflow.com/a/50746409)
+        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
+            np.random.random())
+        theta = np.random.uniform(0, 2 * np.pi)
+
+        # x,y-position of the cube
+        x = radius * np.cos(theta)
+        y = radius * np.sin(theta)
+
+        candidate = np.array([x+pos[0], y+pos[1], pos[2]])
+        if np.sqrt(candidate[0]**2 + candidate[1]**2):
+            pass
+        return new_pos

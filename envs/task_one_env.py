@@ -69,6 +69,9 @@ class TaskOneEnv(gym.GoalEnv):
         xyz_space = gym.spaces.Box(
                     low=np.array([-0.3,-0.3,0]*3, dtype=np.float32),
                     high=np.array([0.3]*9, dtype=np.float32))
+        xyz_vel_space = gym.spaces.Box(
+                    low=np.array([-10]*9, dtype=np.float32),
+                    high=np.array([10]*9, dtype=np.float32))
 
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
@@ -87,16 +90,16 @@ class TaskOneEnv(gym.GoalEnv):
         self.observation_space = gym.spaces.Dict({
             "observation":
             gym.spaces.Dict({
-                "position": spaces.robot_position.gym,
-                "velocity": spaces.robot_velocity.gym,
+                "position": xyz_space,#spaces.robot_position.gym,
+                "velocity": xyz_vel_space,#spaces.robot_velocity.gym,
                 "torque": spaces.robot_torque.gym,
             }),
             "desired_goal":
             object_state_space,
             "achieved_goal":
             object_state_space,
-            "robot_xyz":
-            xyz_space,
+            #"robot_xyz":
+            #xyz_space,
         })
 
     def compute_reward(self, observation, info):
@@ -136,15 +139,21 @@ class TaskOneEnv(gym.GoalEnv):
 
         # compute reward to see that each finger is close to the cube
         grasp = 0
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+        # for finger_id in finger_ids:
+        #     finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+        #     finger_to_object = np.linalg.norm(finger_pos - object_pos)
+        #     grasp += rewards.tolerance(finger_to_object,
+        #                           bounds=(0, cube_radius),
+        #                           margin=cube_radius,
+        #                           sigmoid='long_tail')
+        for i in range(3):
+            finger_pos = observation['observation']['position'][3*i:3*i+3]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(
-                grasp,
-                rewards.tolerance(finger_to_object,
+            grasp += rewards.tolerance(finger_to_object,
                                   bounds=(0, cube_radius),
                                   margin=cube_radius,
-                                  sigmoid='long_tail'))
+                                  sigmoid='long_tail')
+        grasp = grasp / 3.
 
         # reward for low finger tips
         # low = 0
@@ -284,10 +293,12 @@ class TaskOneEnv(gym.GoalEnv):
         robot_observation = self.platform.get_robot_observation(t)
         object_observation = self.platform.get_object_pose(t)
 
+        robot_pos, robot_vel = self._get_robot_xyz(velocity=True)
+
         observation = {
             "observation": {
-                "position": robot_observation.position,
-                "velocity": robot_observation.velocity,
+                "position": robot_pos,#robot_observation.position,
+                "velocity": robot_vel,#robot_observation.velocity,
                 "torque": robot_observation.torque,
             },
             "desired_goal": self.goal,
@@ -295,7 +306,7 @@ class TaskOneEnv(gym.GoalEnv):
                 "position": self.goal["position"] - object_observation.position,
                 "orientation": self.goal["orientation"] - object_observation.orientation,
             },
-            "robot_xyz": self._get_robot_xyz()
+            #"robot_xyz": self._get_robot_xyz()
         }
         return observation
 
@@ -313,9 +324,16 @@ class TaskOneEnv(gym.GoalEnv):
 
         return robot_action
 
-    def _get_robot_xyz(self):
+    def _get_robot_xyz(self, velocity=False):
         robot_id = self.platform.simfinger.finger_id
-        return np.array([
-                pybullet.getLinkState(robot_id, i)[0]
-                for i in self.platform.simfinger.pybullet_tip_link_indices
-                ]).flatten()
+        tip_ids = self.platform.simfinger.pybullet_tip_link_indices
+
+        if velocity:
+            pos, vel = [],[]
+            for i in tip_ids:
+                ls = pybullet.getLinkState(robot_id, i, computeLinkVelocity=True)
+                pos.append(ls[0])
+                vel.append(ls[6])
+            return np.array(pos).flatten(), np.array(vel).flatten()
+        else:
+            return np.array([pybullet.getLinkState(robot_id, i)[0] for i in tip_ids]).flatten()
