@@ -66,6 +66,10 @@ class TaskOneEnv(gym.GoalEnv):
             {"position": spaces.object_position.gym,
              "orientation": spaces.object_orientation.gym})
 
+        xyz_space = gym.spaces.Box(
+                    low=np.array([-0.3,-0.3,0]*3, dtype=np.float32),
+                    high=np.array([0.3]*9, dtype=np.float32))
+
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
@@ -91,6 +95,8 @@ class TaskOneEnv(gym.GoalEnv):
             object_state_space,
             "achieved_goal":
             object_state_space,
+            "robot_xyz":
+            xyz_space,
         })
 
     def compute_reward(self, observation, info):
@@ -289,6 +295,7 @@ class TaskOneEnv(gym.GoalEnv):
                 "position": self.goal["position"] - object_observation.position,
                 "orientation": self.goal["orientation"] - object_observation.orientation,
             },
+            "robot_xyz": self._get_robot_xyz()
         }
         return observation
 
@@ -305,3 +312,10 @@ class TaskOneEnv(gym.GoalEnv):
             raise ValueError("Invalid action_type")
 
         return robot_action
+
+    def _get_robot_xyz(self):
+        robot_id = self.platform.simfinger.finger_id
+        return np.array([
+                pybullet.getLinkState(robot_id, i)[0]
+                for i in self.platform.simfinger.pybullet_tip_link_indices
+                ]).flatten()

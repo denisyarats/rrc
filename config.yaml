@@ -48,7 +48,7 @@ actor_stddev: 0.2
 hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
-random_nstep: false
+random_nstep: true
 retrace: false
 
 
