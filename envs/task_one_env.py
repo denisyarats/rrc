@@ -96,8 +96,8 @@ class TaskOneEnv(gym.GoalEnv):
             }),
             "desired_goal": object_state_space,
             "achieved_goal": object_state_space,
-            "robot_pos": xyz_space,
-            "robot_vel": xyz_vel_space,
+            #"robot_pos": xyz_space,
+            #"robot_vel": xyz_vel_space,
         })
 
     def compute_reward(self, observation, info):
@@ -142,7 +142,7 @@ class TaskOneEnv(gym.GoalEnv):
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
             grasp += rewards.tolerance(finger_to_object,
                                   bounds=(0, cube_radius),
-                                  margin=cube_radius,
+                                  margin=2.*cube_radius,
                                   sigmoid='long_tail')
         grasp = grasp / 3.
 
@@ -188,6 +188,7 @@ class TaskOneEnv(gym.GoalEnv):
             - info (dict): info dictionary containing the difficulty level of
               the goal.
         """
+        action = self.observation['observation']['position'] + action
         if self.platform is None:
             raise RuntimeError("Call `reset()` before starting to step.")
 
@@ -297,9 +298,10 @@ class TaskOneEnv(gym.GoalEnv):
                 "position": self.goal["position"] - object_observation.position,
                 "orientation": self.goal["orientation"] - object_observation.orientation,
             },
-            "robot_pos": robot_pos,
-            "robot_vel": robot_vel,
+            #"robot_pos": robot_pos,
+            #"robot_vel": robot_vel,
         }
+        self.observation=observation
         return observation
 
     def _gym_action_to_robot_action(self, gym_action):
