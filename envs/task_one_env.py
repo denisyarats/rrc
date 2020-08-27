@@ -147,24 +147,24 @@ class TaskOneEnv(gym.GoalEnv):
                                   sigmoid='long_tail'))
 
         # reward for low finger tips
-        low = 0
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            z_pos = finger_pos[-1]
-            low += rewards.tolerance(z_pos,
-                                  bounds=(0, 0.5 * cube_radius),
-                                  margin=cube_radius,
-                                  sigmoid='long_tail')
-        low = low / 3.
+        # low = 0
+        # for finger_id in finger_ids:
+        #     finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+        #     z_pos = finger_pos[-1]
+        #     low += rewards.tolerance(z_pos,
+        #                           bounds=(0, 0.5 * cube_radius),
+        #                           margin=cube_radius,
+        #                           sigmoid='long_tail')
+        # low = low / 3.
 
 
-        in_place_weight = 1.0
+        in_place_weight = 2.0
 
         info['reward_grasp'] = grasp
-        info['reward_low'] = low
+        #info['reward_low'] = low
         info['reward_in_place'] = in_place
 
-        reward = (grasp + low + in_place_weight * in_place) / (2.0 + in_place_weight)
+        reward = (grasp + in_place_weight * in_place) / (1.0 + in_place_weight)
         return reward
 
     def step(self, action):

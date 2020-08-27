@@ -397,3 +397,120 @@ class CubeCurriculum(Curriculum):
         ordered_goals[:, -1] /= 2
 
         return ordered_goals.flatten()
+
+
+class CubePosCurriculum(Curriculum):
+    def __init__(self,
+                 env,
+                 difficulty,
+                 initializer,
+                 start_shape=(16,),
+                 goal_shape=(7,),
+                 buffer_capacity=1000,
+                 R_min=0.2,
+                 R_max=0.9,
+                 new_goal_freq=3,
+                 target_task_freq=10,
+                 n_random_actions=50,
+                 remove_orientation=False):
+        super().__init__(env, start_shape, goal_shape, buffer_capacity, R_min,
+                         R_max, new_goal_freq, target_task_freq,
+                         n_random_actions)
+        self.difficulty = difficulty
+        self.remove_orientation = remove_orientation
+        self.initializer = initializer
+
+        self.radius = 0
+        return
+
+    def sample_new_start_and_goal(self):
+        # set finger tips near the corners of the cube, and cube near target
+        goal_dict = self.initializer.get_goal()
+        goal = np.concatenate([goal_dict.position, goal_dict.orientation])
+
+        cube_init_pos = np.array(
+            [goal[0], goal[1], move_cube._CUBE_WIDTH / 2.])
+        cube_init_or = np.array([0, 0, 0, 1])
+        tip_init = self._choose_tip_init(
+            move_cube.Pose(position=cube_init_pos, orientation=cube_init_or))
+        start = np.concatenate([tip_init, cube_init_pos, cube_init_or])
+        return start, goal
+
+    def sample_target_start_and_goal(self):
+        # standard task init
+        robot_init = TriFingerPlatform.spaces.robot_position.default
+        cube_init = move_cube.sample_goal(difficulty=-1)
+        start = np.concatenate(
+            [robot_init, cube_init.position, cube_init.orientation])
+
+        goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
+        goal = np.concatenate([goal_dict.position, goal_dict.orientation])
+        return start, goal
+
+    def compute_start(self, t):
+        robot_pos = self.env.platform.get_robot_observation(t + 1).position
+        cube_pos = self.env.platform.get_object_pose(t + 1)
+        start = np.concatenate(
+            [robot_pos, cube_pos.position, cube_pos.orientation])
+        return start
+
+    def reset_simulator(self, start, goal):
+        del self.env.platform
+
+        if self.remove_orientation:
+            self.env.platform = TriFingerPlatform(
+                visualization=self.env.visualization,
+                initial_robot_position=start[:9],
+                initial_object_pose=move_cube.Pose(position=start[9:12],
+                                                   orientation=np.array([0,0,0,1])))
+
+            self.env.goal = {
+                "position": goal,
+            }
+        else:
+            self.env.platform = TriFingerPlatform(
+                visualization=self.env.visualization,
+                initial_robot_position=start[:9],
+                initial_object_pose=move_cube.Pose(position=start[9:12],
+                                                   orientation=start[12:]))
+
+            self.env.goal = {
+                "position": goal[:3],
+                "orientation": goal[3:],
+            }
+
+        if self.env.visualization:
+            self.goal_marker = visual_objects.CubeMarker(
+                width=0.065,
+                position=self.env.goal.position,
+                orientation=self.env.goal.orientation,
+            )
+        return
+
+    def _choose_tip_init(self, cube_pose):
+        robot_id = self.env.platform.simfinger.finger_id
+        init_tip_locs = self._get_robot_xyz()
+        cube_corners = move_cube.get_cube_corner_positions(cube_pose)
+        epsilon = 0.1
+
+        dists = []
+        for i in range(8):
+            d = []
+            for j in range(3):
+                d.append(np.linalg.norm(cube_corners[i] - init_tip_locs[j]))
+            dists.append(np.array(d))
+        dists = np.array(dists)
+
+        ordered_goals = np.zeros((3, 3))
+        for i in range(3):
+            idx = np.argmin(dists.flatten())
+            corner_id = idx // 3
+            finger_id = idx % 3
+            ordered_goals[finger_id] = cube_corners[corner_id]
+            dists[corner_id, :] = np.inf
+            dists[:, finger_id] = np.inf
+
+        ordered_goals[:, :-1] *= 1 + epsilon
+        ordered_goals[:, -1] /= 2
+
+        return ordered_goals.flatten()
