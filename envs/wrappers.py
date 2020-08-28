@@ -17,33 +17,34 @@ def flat_space(space, value=None, keys=[]):
 
 
 class FlattenObservationWrapper(gym.ObservationWrapper):
-    def __init__(self, env, excluded=[]):
+    def __init__(self, env):
         super().__init__(env)
-
-        self.excluded = excluded
 
         low = [
             space.low.flatten()
             for space, _, key in flat_space(self.env.observation_space)
-            if key not in excluded
         ]
 
         high = [
             space.high.flatten()
             for space, _, key in flat_space(self.env.observation_space)
-            if key not in excluded
         ]
 
         self.observation_space = gym.spaces.Box(low=np.concatenate(low,
                                                                    axis=0),
                                                 high=np.concatenate(high,
                                                                     axis=0))
+        self.obs_slices = []
+        offset = 0
+        for space, _, key in flat_space(self.env.observation_space):
+            n = space.shape[0]
+            self.obs_slices.append([key, offset, offset + n])
+            offset += n
 
     def observation(self, obs):
         observation = [
             x.flatten()
             for _, x, key in flat_space(self.env.observation_space, obs)
-            if key not in self.excluded
         ]
 
         observation = np.concatenate(observation, axis=0)

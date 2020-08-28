@@ -74,6 +74,7 @@ class Workspace(object):
         action_space = self.env.action_space
 
         cfg.agent.params.obs_shape = obs_space.shape
+        cfg.agent.params.obs_slices = self.env.obs_slices
         cfg.agent.params.action_shape = action_space.shape
         cfg.agent.params.action_range = [
             float(self.env.action_space.low.min()),

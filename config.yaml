@@ -4,6 +4,7 @@ env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
+excluded_obses: desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.24/143959_ddpg_baseline/6/model
@@ -59,6 +60,7 @@ agent:
   class: ddpg.DDPGAgent
   params:
     obs_shape: ??? # to be specified later
+    obs_slices: ??? # to be specified later
     action_shape: ??? # to be specified later
     action_range: ??? # to be specified later
     device: ${device}
@@ -72,12 +74,12 @@ agent:
     batch_size: ${batch_size}
     nstep: ${nstep}
     use_ln: true
-    head_init_coef: 1.0
+    excluded_obses: ${excluded_obses}
     
 critic:
   class: ddpg.Critic
   params:
-    obs_shape: ${agent.params.obs_shape}
+    obs_shape: ???
     action_shape: ${agent.params.action_shape}
     hidden_dim: ${hidden_dim}
     hidden_depth: ${hidden_depth}
@@ -86,14 +88,13 @@ critic:
 actor:
   class: ddpg.Actor
   params:
-    obs_shape: ${agent.params.obs_shape}
+    obs_shape: ???
     action_shape: ${agent.params.action_shape}
     hidden_dim: ${hidden_dim}
     hidden_depth: ${hidden_depth}
     stddev: ${actor_stddev}
     parameterization: ${parameterization}
     use_ln: ${agent.params.use_ln}
-    head_init_coef: ${agent.params.head_init_coef}
 
 
 experiment: bench

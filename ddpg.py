@@ -13,7 +13,7 @@ import kornia
 class Actor(nn.Module):
     """torch.distributions implementation of an diagonal Gaussian policy."""
     def __init__(self, obs_shape, action_shape, hidden_dim, hidden_depth,
-                 stddev, parameterization, use_ln, head_init_coef):
+                 stddev, parameterization, use_ln):
         super().__init__()
 
         assert parameterization in ['clipped', 'squashed']
@@ -28,8 +28,6 @@ class Actor(nn.Module):
 
         self.outputs = dict()
         self.apply(utils.weight_init)
-
-        self.trunk[-1].weight.data *= head_init_coef
 
     def forward(self, obs):
         mu = self.trunk(obs)
@@ -97,10 +95,11 @@ class Critic(nn.Module):
 
 class DDPGAgent(object):
     """Data regularized Q: actor-critic method for learning from pixels."""
-    def __init__(self, obs_shape, action_shape, action_range, device,
-                 critic_cfg, actor_cfg, discount, lr, actor_update_frequency,
-                 critic_tau, critic_target_update_frequency, batch_size, nstep,
-                 use_ln, head_init_coef):
+    def __init__(self, obs_shape, obs_slices, action_shape, action_range,
+                 device, critic_cfg, actor_cfg, discount, lr,
+                 actor_update_frequency, critic_tau,
+                 critic_target_update_frequency, batch_size, nstep, use_ln,
+                 excluded_obses):
         self.action_range = action_range
         self.device = device
         self.discount = discount
@@ -110,8 +109,19 @@ class DDPGAgent(object):
         self.batch_size = batch_size
         self.nstep = nstep
 
+        excluded_obses = [] if excluded_obses is None else excluded_obses.split(
+            ':')
+        valid_obs_idxs = []
+        for key, left, right in obs_slices:
+            if key not in excluded_obses:
+                for i in range(left, right):
+                    valid_obs_idxs.append(i)
+        self.valid_obs_idxs = np.array(sorted(valid_obs_idxs))
+
+        actor_cfg.params.obs_shape = self.valid_obs_idxs.shape
         self.actor = hydra.utils.instantiate(actor_cfg).to(self.device)
 
+        critic_cfg.params.obs_shape = self.valid_obs_idxs.shape
         self.critic = hydra.utils.instantiate(critic_cfg).to(self.device)
         self.critic_target = hydra.utils.instantiate(critic_cfg).to(
             self.device)
@@ -130,9 +140,13 @@ class DDPGAgent(object):
         self.actor.train(training)
         self.critic.train(training)
 
+    def preprocess_obs(self, obs):
+        return obs[:, self.valid_obs_idxs]
+
     def act(self, obs, sample=False):
         obs = torch.FloatTensor(obs).to(self.device)
         obs = obs.unsqueeze(0)
+        obs = self.preprocess_obs(obs)
         dist = self.actor(obs)
         action = dist.sample() if sample else dist.mean
         action = action.clamp(*self.action_range)
@@ -189,6 +203,9 @@ class DDPGAgent(object):
     def update(self, replay_buffer, logger, step):
         obs, action, reward, next_obs, discount = \
           replay_buffer.sample(self.batch_size, self.discount, self.nstep)
+
+        obs = self.preprocess_obs(obs)
+        next_obs = self.preprocess_obs(next_obs)
 
         logger.log('train/batch_reward', reward.mean(), step)
 
