@@ -61,8 +61,8 @@ def main():
     overrides.add(key='target_task_freq', values=[100000])
     overrides.add(key='n_random_actions', values=[0])
 
-    overrides.add(key='action_type', values=['torque'])
-    overrides.add(key='episode_length', values=[200, 500])
+    overrides.add(key='action_type', values=['torque', 'position'])
+    overrides.add(key='episode_length', values=[500])
     overrides.add(key='train_initializer', values=['fixed_goal'])
     overrides.add(key='eval_initializer', values=['fixed_goal'])
     overrides.add(key='lr', values=[1e-4])
