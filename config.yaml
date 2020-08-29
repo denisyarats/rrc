@@ -14,15 +14,15 @@ eval_initializer: fixed_goal
 curriculum_max_step: 100000
 curriculum_init_p: 0.0
 # david curriculum
-use_curriculum: false
+use_curriculum: true
 start_shape: (16,)
 goal_shape: (7,)
 curriculum_buffer_capacity: 10000
-R_min: 0.2
-R_max: 0.9
-new_goal_freq: 3
-target_task_freq: 4
-n_random_actions: 50
+R_min: 0.3
+R_max: 0.6
+new_goal_freq: 2
+target_task_freq: 10000
+n_random_actions: 10
 # train
 num_train_steps: 100000
 num_seed_steps: 1000

@@ -86,20 +86,20 @@ class Curriculum(gym.GoalEnv):
             self.curriculum_buffer.add(self.start, self.goal, self.ep_reward)
         self.ep_reward = 0
 
-        # sometimes sample (start, goal) from the target task
-        if self.n_resets % self.target_task_freq == 0:
-            start, goal = self.sample_target_start_and_goal()
+        # somtimes sample new (start, goal) pairs
+        if self.n_resets % self.new_goal_freq == 0:
+            del self.env.platform
+            self.env.platform = TriFingerPlatform()
+            start, goal = self.sample_new_start_and_goal()
             self.start = start
             self.goal = goal
             # always add the first (start,goal) pair to the buffer
             if len(self.curriculum_buffer) == 0:
                 self.curriculum_buffer.add(self.start, self.goal,
                                            self.R_min + 1)
-        # somtimes sample new (start, goal) pairs
-        elif self.n_resets % self.new_goal_freq == 0:
-            del self.env.platform
-            self.env.platform = TriFingerPlatform()
-            start, goal = self.sample_new_start_and_goal()
+        # sometimes sample (start, goal) from the target task
+        elif self.n_resets % self.target_task_freq == 0:
+            start, goal = self.sample_target_start_and_goal()
             self.start = start
             self.goal = goal
         # usually sample goal from buffer and add a few random actions
@@ -322,11 +322,12 @@ class CubeCurriculum(Curriculum):
     def sample_target_start_and_goal(self):
         # standard task init
         robot_init = TriFingerPlatform.spaces.robot_position.default
-        cube_init = move_cube.sample_goal(difficulty=-1)
+        self.initializer.reset()
+        cube_init = self.initializer.get_initial_state()
         start = np.concatenate(
             [robot_init, cube_init.position, cube_init.orientation])
 
-        goal_dict = move_cube.sample_goal(difficulty=self.difficulty)
+        goal_dict = self.initializer.get_goal()
         goal = np.concatenate([goal_dict.position, goal_dict.orientation])
         return start, goal
 
@@ -399,6 +400,9 @@ class CubeCurriculum(Curriculum):
         return ordered_goals.flatten()
 
 
+
+
+
 from scipy.spatial.transform import Rotation
 
 class CubePosCurriculum(Curriculum):
@@ -423,7 +427,7 @@ class CubePosCurriculum(Curriculum):
         self.initializer = initializer
 
         self.radius = 0.02
-        self.init_radius = 0.02
+        self.init_radius = 0.01
         self.epsilon = 0.0001
         return
 
@@ -435,8 +439,9 @@ class CubePosCurriculum(Curriculum):
         cube_init_pos = self._random_xy_disp(goal_dict.position, self.radius)
         cube_init_or = self._random_yaw_orientation()
 
-        tip_init = self._choose_tip_init(
-            move_cube.Pose(position=cube_init_pos, orientation=cube_init_or))
+        # tip_init = self._choose_tip_init(
+        #     move_cube.Pose(position=cube_init_pos, orientation=cube_init_or))
+        tip_init = TriFingerPlatform.spaces.robot_position.default
         start = np.concatenate([tip_init, cube_init_pos, cube_init_or])
         return start, goal
 
