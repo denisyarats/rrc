@@ -109,11 +109,17 @@ class TaskOneEnv(gym.GoalEnv):
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
         # ASSUMING RELATIVE POS
-        object_to_target = np.linalg.norm(target_pos)
+        #object_to_target = np.linalg.norm(target_pos)
+        # ASSUMING ABSOLUTE POS
+        object_to_target = np.linalg.norm(target_pos - object_pos)
         in_place = rewards.tolerance(object_to_target,
-                                     bounds=(0, 0.2 * cube_radius),
+                                     bounds=(0, 0.001 * cube_radius),
                                      margin=arena_radius,
                                      sigmoid='long_tail')
+        # in_place = rewards.tolerance(object_to_target,
+        #                              bounds=(0, 0.2 * cube_radius),
+        #                              margin=arena_radius,
+        #                              sigmoid='long_tail')
         # compute reward to see that each fingert is close to the cube
         grasp = 0
         #hand_away = 0
@@ -328,10 +334,10 @@ class TaskOneEnv(gym.GoalEnv):
                 "velocity": robot_observation.velocity,
                 "torque": robot_observation.torque,
             },
-            "desired_goal": {
-                "position": self.goal['position'] - object_observation.position,
-                "orientation": self.goal['orientation'] - object_observation.orientation,
-            },
+            "desired_goal": self.goal,#{
+            #     "position": self.goal['position'] - object_observation.position,
+            #     "orientation": self.goal['orientation'] - object_observation.orientation,
+            # },
             "achieved_goal": {
                 "position": object_observation.position,
                 "orientation": object_observation.orientation,
