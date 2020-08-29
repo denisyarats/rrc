@@ -329,8 +329,8 @@ class TaskOneEnv(gym.GoalEnv):
                 "torque": robot_observation.torque,
             },
             "desired_goal": {
-                "position": self.goal[orientation] - object_observation.position,
-                "orientation": self.goal[orientation] - object_observation.orientation,
+                "position": self.goal['position'] - object_observation.position,
+                "orientation": self.goal['orientation'] - object_observation.orientation,
             },
             "achieved_goal": {
                 "position": object_observation.position,
