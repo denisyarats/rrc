@@ -4,7 +4,7 @@ action_type: position # torque or both
 action_repeat: 1
 episode_length: 200
 eval_episode_length: 500
-remove_orientation: false
+remove_orientation: true
 # eval env
 difficulty: 1
 true_eval_episode_length: 1000
@@ -14,7 +14,7 @@ eval_initializer: fixed_goal
 curriculum_max_step: 100000
 curriculum_init_p: 0.0
 # david curriculum
-use_curriculum: true
+use_curriculum: false
 start_shape: (16,)
 goal_shape: (7,)
 curriculum_buffer_capacity: 10000

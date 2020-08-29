@@ -100,6 +100,37 @@ class TaskOneEnv(gym.GoalEnv):
             #"robot_vel": xyz_vel_space,
         })
 
+    def denis_compute_reward(self, observation, info):
+        cube_radius = move_cube._cube_3d_radius
+        arena_radius = move_cube._ARENA_RADIUS
+        robot_id = self.platform.simfinger.finger_id
+        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
+        # compute reward to see if the object reached the target
+        object_pos = observation['achieved_goal']['position']
+        target_pos = observation['desired_goal']['position']
+        object_to_target = np.linalg.norm(object_pos - target_pos)
+        in_place = rewards.tolerance(object_to_target,
+                                     bounds=(0, 0.2 * cube_radius),
+                                     margin=arena_radius,
+                                     sigmoid='long_tail')
+        # compute reward to see that each fingert is close to the cube
+        grasp = 0
+        #hand_away = 0
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+            finger_to_object = np.linalg.norm(finger_pos - object_pos)
+            grasp = max(
+                grasp,
+                rewards.tolerance(finger_to_object,
+                                  bounds=(0, 0.5 * cube_radius),
+                                  margin=arena_radius,
+                                  sigmoid='long_tail'))
+        in_place_weight = 10.0
+        info['reward_grasp'] = grasp
+        info['reward_in_place'] = in_place
+        reward = (grasp + in_place_weight * in_place) / (1.0 + in_place_weight)
+        return reward
+
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
 
@@ -127,9 +158,9 @@ class TaskOneEnv(gym.GoalEnv):
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
-        object_pos = observation['achieved_goal']['position'] + observation['desired_goal']['position']
+        object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
-        object_to_target = np.linalg.norm(object_pos - target_pos)
+        object_to_target = np.linalg.norm(target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.1 * cube_radius),
                                      margin= 0.5 * arena_radius,
@@ -188,10 +219,9 @@ class TaskOneEnv(gym.GoalEnv):
             - info (dict): info dictionary containing the difficulty level of
               the goal.
         """
-        if self.action_type == ActionType.POSITION:
-            action = self.observation['observation']['position'] + action
-            action = np.clip(action, self.action_space.low, self.action_space.high)
-
+        # if self.action_type == ActionType.POSITION:
+        #     action = self.observation['observation']['position'] + action
+        #     action = np.clip(action, self.action_space.low, self.action_space.high)
 
         if self.platform is None:
             raise RuntimeError("Call `reset()` before starting to step.")
@@ -223,7 +253,7 @@ class TaskOneEnv(gym.GoalEnv):
             # will not be possible
             observation = self._create_observation(t + 1)
 
-            reward += self.compute_reward(observation, self.info)
+            reward += self.denis_compute_reward(observation, self.info)
 
         is_done = self.step_count == self.episode_length
 
@@ -297,10 +327,13 @@ class TaskOneEnv(gym.GoalEnv):
                 "velocity": robot_observation.velocity,
                 "torque": robot_observation.torque,
             },
-            "desired_goal": self.goal,
+            "desired_goal": self.goal, #{
+            #     "position": self.goal[orientation] - object_observation.position,
+            #     "orientation": self.goal[orientation] - object_observation.orientation,
+            # },
             "achieved_goal": {
-                "position": self.goal["position"] - object_observation.position,
-                "orientation": self.goal["orientation"] - object_observation.orientation,
+                "position": object_observation.position,
+                "orientation": object_observation.orientation,
             },
             #"robot_pos": robot_pos,
             #"robot_vel": robot_vel,
