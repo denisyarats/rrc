@@ -108,7 +108,8 @@ class TaskOneEnv(gym.GoalEnv):
         # compute reward to see if the object reached the target
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
-        object_to_target = np.linalg.norm(object_pos - target_pos)
+        # ASSUMING RELATIVE POS
+        object_to_target = np.linalg.norm(target_pos)
         in_place = rewards.tolerance(object_to_target,
                                      bounds=(0, 0.2 * cube_radius),
                                      margin=arena_radius,
@@ -327,10 +328,10 @@ class TaskOneEnv(gym.GoalEnv):
                 "velocity": robot_observation.velocity,
                 "torque": robot_observation.torque,
             },
-            "desired_goal": self.goal, #{
-            #     "position": self.goal[orientation] - object_observation.position,
-            #     "orientation": self.goal[orientation] - object_observation.orientation,
-            # },
+            "desired_goal": {
+                "position": self.goal[orientation] - object_observation.position,
+                "orientation": self.goal[orientation] - object_observation.orientation,
+            },
             "achieved_goal": {
                 "position": object_observation.position,
                 "orientation": object_observation.orientation,
