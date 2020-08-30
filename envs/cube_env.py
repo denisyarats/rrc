@@ -115,6 +115,10 @@ class CubeEnv(gym.GoalEnv):
             }
         )
 
+        xyz_space = gym.spaces.Box(
+                    low=np.array([-0.3,-0.3,0]*3, dtype=np.float32),
+                    high=np.array([0.3]*9, dtype=np.float32))
+
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
