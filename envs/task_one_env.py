@@ -364,7 +364,7 @@ class TaskOneEnv(gym.GoalEnv):
             for i, tip_id in enumerate(tip_ids):
                 pos[3*i:3*i+3] = pybullet.calculateInverseKinematics(
                                         robot_id, tip_id, gym_action[3*i:3*i+3],
-                                        maxNumIterations=1000)[3*i:3*i+3]
+                                        maxNumIterations=100)[3*i:3*i+3]
             gym_action = pos
 
             robot_action = self.platform.Action(position=gym_action)
