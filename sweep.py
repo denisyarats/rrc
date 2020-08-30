@@ -55,7 +55,7 @@ def main():
     overrides.add(key='num_eval_episodes', values=[30])
     overrides.add(key='save_frequency', values=[300000])
 
-    overrides.add(key='use_curriculum', values=['true'])
+    overrides.add(key='use_curriculum', values=['false'])
     overrides.add(key='R_min', values=[0.2])
     overrides.add(key='R_max', values=[0.4, 0.5])
     overrides.add(key='new_goal_freq', values=[2])
@@ -66,7 +66,7 @@ def main():
     overrides.add(key='episode_length', values=[500])
     overrides.add(key='train_initializer', values=['fixed_goal'])
     overrides.add(key='eval_initializer', values=['fixed_goal'])
-    overrides.add(key='lr', values=[1e-4])
+    overrides.add(key='lr', values=[1e-3, 1e-4, 1e-5])
     overrides.add(key='batch_size', values=[128])
     overrides.add(key='actor_stddev', values=[0.2])
     overrides.add(key='nstep', values=[5])

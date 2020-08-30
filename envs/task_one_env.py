@@ -76,7 +76,8 @@ class TaskOneEnv(gym.GoalEnv):
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
-            self.action_space = spaces.robot_position.gym
+            #self.action_space = spaces.robot_position.gym
+            self.action_space = xyz_space
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             self.action_space = gym.spaces.Dict({
                 "torque":
@@ -355,6 +356,17 @@ class TaskOneEnv(gym.GoalEnv):
         if self.action_type == ActionType.TORQUE:
             robot_action = self.platform.Action(torque=gym_action)
         elif self.action_type == ActionType.POSITION:
+
+            # solve ik
+            robot_id = self.platform.simfinger.finger_id
+            tip_ids = self.platform.simfinger.pybullet_tip_link_indices
+            pos = np.zeros(9)
+            for i, tip_id in enumerate(tip_ids):
+                pos[3*i:3*i+3] = pybullet.calculateInverseKinematics(
+                                        robot_id, tip_id, gym_action[3*i:3*i+3],
+                                        maxNumIterations=1000)[3*i:3*i+3]
+            gym_action = pos
+
             robot_action = self.platform.Action(position=gym_action)
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             robot_action = self.platform.Action(
