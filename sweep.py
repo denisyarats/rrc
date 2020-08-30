@@ -50,13 +50,14 @@ def main():
 
     overrides.add(key='env', values=['task1'])
     overrides.add(key='num_train_steps', values=[1000000])
+    overrides.add(key='replay_buffer_capacity', values=[100000])
     overrides.add(key='eval_frequency', values=[10000])
     overrides.add(key='num_eval_episodes', values=[30])
     overrides.add(key='save_frequency', values=[300000])
 
-    overrides.add(key='use_curriculum', values=['true'])
-    overrides.add(key='R_min', values=[0.3, 0.4])
-    overrides.add(key='R_max', values=[0.5, 0.7])
+    overrides.add(key='use_curriculum', values=['true', 'false'])
+    overrides.add(key='R_min', values=[0.3])
+    overrides.add(key='R_max', values=[0.5])
     overrides.add(key='new_goal_freq', values=[2])
     overrides.add(key='target_task_freq', values=[100000])
     overrides.add(key='n_random_actions', values=[10])
