@@ -83,6 +83,7 @@ class Workspace(object):
         self.agent = hydra.utils.instantiate(cfg.agent)
 
         if cfg.use_teacher:
+            cfg.agent.params.excluded_obses = cfg.teacher_excluded_obses
             self.teacher = hydra.utils.instantiate(cfg.agent)
             self.teacher.load(cfg.teacher_model_dir, cfg.teacher_model_step)
 

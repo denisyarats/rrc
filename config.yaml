@@ -4,13 +4,14 @@ env: task${difficulty}
 action_type: xyz # torque or both
 action_repeat: 1
 episode_length: 500
-excluded_obses: desired_goal_orientation:achieved_goal_orientation
+excluded_obses: null
 # teacher
 use_teacher: false
-teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.24/143959_ddpg_baseline/6/model
+teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.28/085627_ddpg_teacher2_task23/75/model
 teacher_model_step: 9500000
 teacher_init_p: 0.0
 teacher_max_step: 1000000
+teacher_excluded_obses: desired_goal_orientation:achieved_goal_orientation
 # denis curriculum
 train_initializer: random
 eval_initializer: random
