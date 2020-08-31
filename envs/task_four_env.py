@@ -251,7 +251,8 @@ class TaskFourEnv(gym.GoalEnv):
         #initial_robot_position = np.random.uniform(
         #    TriFingerPlatform.spaces.robot_position.low,
         #    TriFingerPlatform.spaces.robot_position.high)
-        initial_robot_position = TriFingerPlatform.spaces.robot_position.default
+        initial_robot_position = (
+            TriFingerPlatform.spaces.robot_position.default)
         self.initializer.reset()
         initial_object_pose = self.initializer.get_initial_state()
         goal_object_pose = self.initializer.get_goal()
@@ -272,6 +273,7 @@ class TaskFourEnv(gym.GoalEnv):
             width=0.065,
             position=goal_object_pose.position,
             orientation=goal_object_pose.orientation,
+            physicsClientId=self.platform.simfinger._pybullet_client_id,
         )
 
         self.info = {"difficulty": self.initializer.difficulty}
