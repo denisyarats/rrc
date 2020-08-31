@@ -1,7 +1,7 @@
 # env
 difficulty: 1
 env: task${difficulty}
-action_type: xyz # torque or both
+action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
 excluded_obses: null
@@ -36,7 +36,7 @@ seed: 1
 # eval
 eval_frequency: 10000
 num_eval_episodes: 10
-run_true_eval: true
+run_true_eval: false
 # misc
 log_frequency_step: 10000
 log_save_tb: true
