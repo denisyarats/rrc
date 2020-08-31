@@ -36,12 +36,14 @@ def make(env_name,
          new_goal_freq=None,
          target_task_freq=None,
          n_random_actions=None):
-    assert action_type in ['position', 'torque', 'both']
+    assert action_type in ['position', 'torque', 'xyz', 'both']
 
     if action_type == 'position':
         action_type = ActionType.POSITION
     elif action_type == 'torque':
         action_type = ActionType.TORQUE
+    elif action_type == 'xyz':
+        action_type = 'xyz'
     else:
         action_type = ActionType.TORQUE_AND_POSITION
 

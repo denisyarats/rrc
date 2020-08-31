@@ -1,7 +1,7 @@
 # env
 difficulty: 1
 env: task${difficulty}
-action_type: position # torque or both
+action_type: xyz # torque or both
 action_repeat: 1
 episode_length: 500
 excluded_obses: desired_goal_orientation:achieved_goal_orientation
@@ -35,7 +35,7 @@ seed: 1
 # eval
 eval_frequency: 10000
 num_eval_episodes: 10
-run_true_eval: false
+run_true_eval: true
 # misc
 log_frequency_step: 10000
 log_save_tb: true
@@ -75,7 +75,7 @@ agent:
     nstep: ${nstep}
     use_ln: true
     excluded_obses: ${excluded_obses}
-    
+
 critic:
   class: ddpg.Critic
   params:

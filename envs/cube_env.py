@@ -3,6 +3,7 @@ import enum
 
 import numpy as np
 import gym
+import pybullet
 
 from rrc_simulation import TriFingerPlatform
 from rrc_simulation import visual_objects
@@ -65,10 +66,16 @@ class CubeEnv(gym.GoalEnv):
             spaces.object_orientation.gym,
         })
 
+        xyz_space = gym.spaces.Box(
+                    low=np.array([-0.3,-0.3,0]*3, dtype=np.float32),
+                    high=np.array([0.3]*9, dtype=np.float32))
+
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
             self.action_space = spaces.robot_position.gym
+        elif self.action_type == 'xyz':
+            self.action_space = xyz_space
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             self.action_space = gym.spaces.Dict({
                 "torque":
@@ -245,6 +252,17 @@ class CubeEnv(gym.GoalEnv):
         if self.action_type == ActionType.TORQUE:
             robot_action = self.platform.Action(torque=gym_action)
         elif self.action_type == ActionType.POSITION:
+            robot_action = self.platform.Action(position=gym_action)
+        elif self.action_type == 'xyz':
+            # solve ik
+            robot_id = self.platform.simfinger.finger_id
+            tip_ids = self.platform.simfinger.pybullet_tip_link_indices
+            pos = np.zeros(9)
+            for i, tip_id in enumerate(tip_ids):
+                pos[3*i:3*i+3] = pybullet.calculateInverseKinematics(
+                                        robot_id, tip_id, gym_action[3*i:3*i+3],
+                                        maxNumIterations=100)[3*i:3*i+3]
+            gym_action = pos
             robot_action = self.platform.Action(position=gym_action)
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             robot_action = self.platform.Action(
