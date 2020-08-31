@@ -69,9 +69,9 @@ class TaskOneEnv(gym.GoalEnv):
             spaces.object_orientation.gym,
         })
 
-        xyz_space = gym.spaces.Box(
-                    low=np.array([-0.3,-0.3,0]*3, dtype=np.float32),
-                    high=np.array([0.3]*9, dtype=np.float32))
+        xyz_space = gym.spaces.Box(low=np.array([-0.3, -0.3, 0] * 3,
+                                                dtype=np.float32),
+                                   high=np.array([0.3] * 9, dtype=np.float32))
 
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
@@ -313,9 +313,11 @@ class TaskOneEnv(gym.GoalEnv):
             tip_ids = self.platform.simfinger.pybullet_tip_link_indices
             pos = np.zeros(9)
             for i, tip_id in enumerate(tip_ids):
-                pos[3*i:3*i+3] = pybullet.calculateInverseKinematics(
-                                        robot_id, tip_id, gym_action[3*i:3*i+3],
-                                        maxNumIterations=100)[3*i:3*i+3]
+                pos[3 * i:3 * i + 3] = pybullet.calculateInverseKinematics(
+                    robot_id,
+                    tip_id,
+                    gym_action[3 * i:3 * i + 3],
+                    maxNumIterations=100)[3 * i:3 * i + 3]
             gym_action = pos
             robot_action = self.platform.Action(position=gym_action)
         elif self.action_type == ActionType.TORQUE_AND_POSITION:

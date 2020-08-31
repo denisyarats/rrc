@@ -62,13 +62,13 @@ class TaskThreeEnv(gym.GoalEnv):
 
         spaces = TriFingerPlatform.spaces
 
-        object_state_space = gym.spaces.Dict(
-            {
-                "position": spaces.object_position.gym,
-                "orientation": spaces.object_orientation.gym,
-            }
-        )
-        
+        object_state_space = gym.spaces.Dict({
+            "position":
+            spaces.object_position.gym,
+            "orientation":
+            spaces.object_orientation.gym,
+        })
+
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:

@@ -63,13 +63,13 @@ class TaskFourEnv(gym.GoalEnv):
 
         spaces = TriFingerPlatform.spaces
 
-        object_state_space = gym.spaces.Dict(
-            {
-                "position": spaces.object_position.gym,
-                "orientation": spaces.object_orientation.gym,
-            }
-        )
-        
+        object_state_space = gym.spaces.Dict({
+            "position":
+            spaces.object_position.gym,
+            "orientation":
+            spaces.object_orientation.gym,
+        })
+
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
@@ -155,13 +155,14 @@ class TaskFourEnv(gym.GoalEnv):
 
         grasp /= len(finger_ids)
         #hand_away /= len(finger_ids)
-        
-        
-        goal_rot = Rotation.from_quat(observation['desired_goal']['orientation'])
-        actual_rot = Rotation.from_quat(observation['achieved_goal']['orientation'])
+
+        goal_rot = Rotation.from_quat(
+            observation['desired_goal']['orientation'])
+        actual_rot = Rotation.from_quat(
+            observation['achieved_goal']['orientation'])
         error_rot = goal_rot.inv() * actual_rot
         orientation_error = error_rot.magnitude() / np.pi
-        
+
         orientation = rewards.tolerance(orientation_error,
                                         bounds=(0, 0.2 * np.pi),
                                         margin=np.pi,
@@ -180,8 +181,9 @@ class TaskFourEnv(gym.GoalEnv):
         info['reward_orientation'] = orientation
 
         reward = (grasp + above_ground_weight * above_ground +
-                  in_place_weight * in_place + orientation_weight * orientation) / (1.0 + in_place_weight +
-                                                 above_ground_weight + orientation_weight)
+                  in_place_weight * in_place + orientation_weight *
+                  orientation) / (1.0 + in_place_weight + above_ground_weight +
+                                  orientation_weight)
         return reward
 
     def step(self, action):
