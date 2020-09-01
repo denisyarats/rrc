@@ -93,11 +93,41 @@ class Critic(nn.Module):
                 logger.log_param(f'train_critic/q2_fc{i}', m2, step)
 
 
+class RewardMixer(nn.Module):
+    """Reward integrator"""
+    def __init__(self, reward_shape, init_values, final_values, starts,
+                 periods):
+        super().__init__()
+        self.reward_shape = reward_shape
+        self.init_values = np.array(init_values)
+        self.final_values = np.array(final_values)
+        self.starts = np.array(starts)
+        self.periods = np.array(periods)
+        self.weights = nn.Parameter(torch.tensor([init_values]))
+
+    def update(self, step):
+        #import ipdb; ipdb.set_trace()
+        ps = ((step - self.starts) / self.periods).clip(0.0, 1.0)
+        dfs = self.final_values - self.init_values
+        new_weights = self.init_values + dfs * ps
+        for i in range(new_weights.shape[0]):
+            self.weights[0, i] = new_weights[i]
+
+    def forward(self, rewards):
+        #import ipdb; ipdb.set_trace()
+        reward = (rewards * self.weights).sum(axis=1, keepdim=True)
+        reward = reward / self.weights.sum(axis=1, keepdim=True)
+        return reward
+
+    def log(self, logger, step):
+        pass
+
+
 class DDPGAgent(object):
     """Data regularized Q: actor-critic method for learning from pixels."""
     def __init__(self, obs_shape, obs_slices, action_shape, action_range,
-                 device, critic_cfg, actor_cfg, discount, lr,
-                 actor_update_frequency, critic_tau,
+                 reward_shape, device, critic_cfg, actor_cfg, reward_mixer_cfg,
+                 discount, lr, actor_update_frequency, critic_tau,
                  critic_target_update_frequency, batch_size, nstep, use_ln,
                  excluded_obses):
         self.action_range = action_range
@@ -126,6 +156,9 @@ class DDPGAgent(object):
         self.critic_target = hydra.utils.instantiate(critic_cfg).to(
             self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
+
+        self.reward_mixer = hydra.utils.instantiate(reward_mixer_cfg).to(
+            self.device)
 
         # optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=lr)
@@ -201,13 +234,17 @@ class DDPGAgent(object):
         self.actor.log(logger, step)
 
     def update(self, replay_buffer, logger, step):
-        obs, action, reward, next_obs, discount = \
+        obs, action, rewards, next_obs, discount = \
           replay_buffer.sample(self.batch_size, self.discount, self.nstep)
 
         obs = self.preprocess_obs(obs)
         next_obs = self.preprocess_obs(next_obs)
 
+        self.reward_mixer.update(step)
+        reward = self.reward_mixer(rewards)
+
         logger.log('train/batch_reward', reward.mean(), step)
+        self.reward_mixer.log(logger, step)
 
         self.update_critic(obs, action, reward, next_obs, discount, logger,
                            step)

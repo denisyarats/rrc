@@ -72,6 +72,7 @@ class Workspace(object):
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
+        reward_space = self.env.reward_space
 
         cfg.agent.params.obs_shape = obs_space.shape
         cfg.agent.params.obs_slices = self.env.obs_slices
@@ -80,6 +81,7 @@ class Workspace(object):
             float(self.env.action_space.low.min()),
             float(self.env.action_space.high.max())
         ]
+        cfg.agent.params.reward_shape = reward_space.shape
         self.agent = hydra.utils.instantiate(cfg.agent)
 
         if cfg.use_teacher:
@@ -88,6 +90,7 @@ class Workspace(object):
             self.teacher.load(cfg.teacher_model_dir, cfg.teacher_model_step)
 
         self.replay_buffer = ReplayBuffer(obs_space.shape, action_space.shape,
+                                          reward_space.shape,
                                           cfg.replay_buffer_capacity,
                                           self.device, cfg.random_nstep)
 
@@ -99,48 +102,42 @@ class Workspace(object):
 
     def evaluate(self, env, tag='eval'):
         assert tag in ['eval', 'true_eval']
-        average_episode_reward = 0
+        average_episode_reward = np.zeros(self.env.reward_space.shape)
         average_episode_length = 0
-        average_reward_infos = defaultdict(float)
         denominator = 1 if tag == 'true_eval' else self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
             obs = env.reset()
             self.video_recorder.init(enabled=(episode == 0 and tag == 'eval'))
             done = False
-            episode_reward = 0
+            episode_reward = np.zeros(self.env.reward_space.shape)
             episode_step = 0
             reward_infos = defaultdict(float)
             while not done:
                 with utils.eval_mode(self.agent):
                     action = self.agent.act(obs, sample=False)
                 obs, reward, done, info = env.step(action)
-                for k, v in info.items():
-                    if k.startswith('reward_'):
-                        reward_infos[k] += v
                 self.video_recorder.record()
                 episode_reward += reward
                 episode_step += 1
 
             average_episode_reward += episode_reward / denominator
             average_episode_length += episode_step
-            for k, v in reward_infos.items():
-                average_reward_infos[k] += v / denominator
             self.video_recorder.save(f'{self.step}.mp4')
 
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
-        self.logger.log(tag + '/episode_reward', average_episode_reward,
+        for i in range(average_episode_reward.shape[0]):
+            self.logger.log(tag + f'/episode_reward_{i}',
+                            average_episode_reward[i], self.step)
+        self.logger.log(tag + f'/episode_reward', average_episode_reward[-1],
                         self.step)
         self.logger.log(tag + '/episode_length', average_episode_length,
                         self.step)
-        for k, v in average_reward_infos.items():
-            self.logger.log(tag + f'/{k}', v / self.cfg.num_eval_episodes,
-                            self.step)
         self.logger.dump(self.step, ty=tag)
 
     def run(self):
-        episode, episode_reward, episode_step, done = 0, 0, 0, True
-        reward_infos = defaultdict(float)
+        episode, episode_step, done = 0, 0, True
+        episode_reward = np.zeros(self.env.reward_space.shape)
         teacher_uses = 0
         start_time = time.time()
         assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
@@ -168,21 +165,24 @@ class Workspace(object):
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
-                self.logger.log('train/teacher_uses', teacher_uses, self.step)
-                self.logger.log('train/episode_reward',
-                                episode_reward / self.cfg.episode_length,
-                                self.step)
-                for k, v in reward_infos.items():
-                    self.logger.log(f'train/{k}', v / self.cfg.episode_length,
+                    self.logger.log('train/teacher_uses', teacher_uses,
                                     self.step)
+                    for i in range(episode_reward.shape[0]):
+                        self.logger.log(
+                            f'train/episode_reward_{i}',
+                            episode_reward[i] / self.cfg.episode_length,
+                            self.step)
+                    self.logger.log(
+                        f'train/episode_reward',
+                        episode_reward[-1] / self.cfg.episode_length,
+                        self.step)
 
                 self.train_initializer.update(self.step)
                 obs = self.env.reset()
                 done = False
-                episode_reward = 0
+                episode_reward = np.zeros(self.env.reward_space.shape)
                 episode_step = 0
                 episode += 1
-                reward_infos = defaultdict(float)
                 teacher_uses = 0
 
                 self.logger.log('train/episode', episode, self.step)
@@ -199,7 +199,8 @@ class Workspace(object):
                             0) / self.cfg.teacher_max_step
                 teacher_p = self.cfg.teacher_init_p * ratio
                 self.logger.log('train/teacher_p', teacher_p, self.step)
-                use_teacher = self.cfg.use_teacher and np.random.rand() < teacher_p
+                use_teacher = self.cfg.use_teacher and np.random.rand(
+                ) < teacher_p
                 teacher_uses += int(use_teacher)
                 agent = self.teacher if use_teacher else self.agent
                 with utils.eval_mode(agent):
@@ -213,9 +214,6 @@ class Workspace(object):
 
             next_obs, reward, done, info = self.env.step(action)
             episode_reward += reward
-            for k, v in info.items():
-                if k.startswith('reward_'):
-                    reward_infos[k] += v
 
             self.replay_buffer.add(obs, action, reward, next_obs, done)
 

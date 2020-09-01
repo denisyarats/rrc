@@ -4,7 +4,7 @@ env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
-excluded_obses: null
+excluded_obses: desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.28/085627_ddpg_teacher2_task23/75/model
@@ -64,9 +64,11 @@ agent:
     obs_slices: ??? # to be specified later
     action_shape: ??? # to be specified later
     action_range: ??? # to be specified later
+    reward_shape: ??? # to be specified later
     device: ${device}
     critic_cfg: ${critic}
     actor_cfg: ${actor}
+    reward_mixer_cfg: ${reward_mixer}
     discount: 0.99
     lr: ${lr}
     actor_update_frequency: 1
@@ -96,6 +98,15 @@ actor:
     stddev: ${actor_stddev}
     parameterization: ${parameterization}
     use_ln: ${agent.params.use_ln}
+    
+reward_mixer:
+  class: ddpg.RewardMixer
+  params:
+    reward_shape: ${agent.params.reward_shape}
+    init_values: [1.0, 0.0, 0.0]
+    final_values: [0.0, 1.0, 1.0]
+    starts: [0, 500000, 1000000]
+    periods: [1000000, 1000000, 1000000]
 
 
 experiment: bench

@@ -9,7 +9,7 @@ from rrc_simulation import TriFingerPlatform
 from rrc_simulation import visual_objects
 from rrc_simulation.tasks import move_cube
 
-from dm_control.utils import rewards
+from dm_control.utils import rewards as dmr
 
 from envs import ActionType
 
@@ -69,16 +69,10 @@ class TaskOneEnv(gym.GoalEnv):
             spaces.object_orientation.gym,
         })
 
-        xyz_space = gym.spaces.Box(low=np.array([-0.3, -0.3, 0] * 3,
-                                                dtype=np.float32),
-                                   high=np.array([0.3] * 9, dtype=np.float32))
-
         if self.action_type == ActionType.TORQUE:
             self.action_space = spaces.robot_torque.gym
         elif self.action_type == ActionType.POSITION:
             self.action_space = spaces.robot_position.gym
-        elif self.action_type == 'xyz':
-            self.action_space = xyz_space
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             self.action_space = gym.spaces.Dict({
                 "torque":
@@ -101,6 +95,8 @@ class TaskOneEnv(gym.GoalEnv):
             "achieved_goal":
             object_state_space,
         })
+        
+        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(2,))
 
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
@@ -132,7 +128,7 @@ class TaskOneEnv(gym.GoalEnv):
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos - target_pos)
-        in_place = rewards.tolerance(object_to_target,
+        in_place = dmr.tolerance(object_to_target,
                                      bounds=(0, 0.001 * cube_radius),
                                      margin=arena_radius,
                                      sigmoid='long_tail')
@@ -145,7 +141,7 @@ class TaskOneEnv(gym.GoalEnv):
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
             grasp = max(
                 grasp,
-                rewards.tolerance(finger_to_object,
+                dmr.tolerance(finger_to_object,
                                   bounds=(0, 0.5 * cube_radius),
                                   margin=arena_radius,
                                   sigmoid='long_tail'))
@@ -159,6 +155,10 @@ class TaskOneEnv(gym.GoalEnv):
         #import ipdb; ipdb.set_trace()
         #grasp /= len(finger_ids)
         #hand_away /= len(finger_ids)
+        rewards = np.array([grasp, in_place])
+        info['reward_0'] = 'grasp'
+        info['reward_1'] = 'in_place'
+        return rewards
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
         in_place_weight = 10.0
@@ -309,19 +309,6 @@ class TaskOneEnv(gym.GoalEnv):
         if self.action_type == ActionType.TORQUE:
             robot_action = self.platform.Action(torque=gym_action)
         elif self.action_type == ActionType.POSITION:
-            robot_action = self.platform.Action(position=gym_action)
-        elif self.action_type == 'xyz':
-            # solve ik
-            robot_id = self.platform.simfinger.finger_id
-            tip_ids = self.platform.simfinger.pybullet_tip_link_indices
-            pos = np.zeros(9)
-            for i, tip_id in enumerate(tip_ids):
-                pos[3 * i:3 * i + 3] = pybullet.calculateInverseKinematics(
-                    robot_id,
-                    tip_id,
-                    gym_action[3 * i:3 * i + 3],
-                    maxNumIterations=100)[3 * i:3 * i + 3]
-            gym_action = pos
             robot_action = self.platform.Action(position=gym_action)
         elif self.action_type == ActionType.TORQUE_AND_POSITION:
             robot_action = self.platform.Action(

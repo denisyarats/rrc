@@ -9,7 +9,7 @@ from rrc_simulation import TriFingerPlatform
 from rrc_simulation import visual_objects
 from rrc_simulation.tasks import move_cube
 
-from dm_control.utils import rewards
+from dm_control.utils import rewards as dmr
 
 from envs import ActionType
 
@@ -95,6 +95,8 @@ class TaskTwoEnv(gym.GoalEnv):
             "achieved_goal":
             object_state_space,
         })
+        
+        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(3,))
 
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
@@ -128,12 +130,12 @@ class TaskTwoEnv(gym.GoalEnv):
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
-        in_place = rewards.tolerance(object_to_target,
+        in_place = dmr.tolerance(object_to_target,
                                      bounds=(0, 0.001 * cube_radius),
                                      margin=cube_radius,
                                      sigmoid='long_tail')
 
-        above_ground = rewards.tolerance(object_pos[2],
+        above_ground = dmr.tolerance(object_pos[2],
                                          bounds=(0.999 * target_height,
                                                  1.001 * target_height),
                                          margin=0.999 * target_height,
@@ -145,12 +147,15 @@ class TaskTwoEnv(gym.GoalEnv):
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp += rewards.tolerance(finger_to_object,
+            grasp += dmr.tolerance(finger_to_object,
                                        bounds=(0, 0.5 * cube_radius),
                                        margin=arena_radius,
                                        sigmoid='long_tail')
 
         grasp /= len(finger_ids)
+        
+        rewards = np.array([grasp, above_ground, in_place])
+        return rewards
         #hand_away /= len(finger_ids)
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
