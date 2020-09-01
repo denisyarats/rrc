@@ -133,7 +133,7 @@ class TaskOneEnv(gym.GoalEnv):
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = rewards.tolerance(object_to_target,
-                                     bounds=(0, 0.2 * cube_radius),
+                                     bounds=(0, 0.001 * cube_radius),
                                      margin=arena_radius,
                                      sigmoid='long_tail')
 

@@ -130,15 +130,15 @@ class TaskThreeEnv(gym.GoalEnv):
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
         in_place = rewards.tolerance(object_to_target,
-                                     bounds=(0, 0.2 * cube_radius),
+                                     bounds=(0, 0.001 * cube_radius),
                                      margin=cube_radius,
                                      sigmoid='long_tail')
 
         above_ground = rewards.tolerance(
             object_pos[2],
-            bounds=(target_pos[2] - 0.2 * min_height,
-                    target_pos[2] + 0.2 * min_height),
-            margin=0.8 * min_height,
+            bounds=(target_pos[2] - 0.001 * min_height,
+                    target_pos[2] + 0.001 * min_height),
+            margin=0.999 * min_height,
             sigmoid='long_tail')
 
         # compute reward to see that each fingert is close to the cube
