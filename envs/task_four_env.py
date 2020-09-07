@@ -160,12 +160,13 @@ class TaskFourEnv(gym.GoalEnv):
             observation['desired_goal']['orientation'])
         actual_rot = Rotation.from_quat(
             observation['achieved_goal']['orientation'])
+        #import ipdb; ipdb.set_trace()
         error_rot = goal_rot.inv() * actual_rot
         orientation_error = error_rot.magnitude() / np.pi
 
         orientation = rewards.tolerance(orientation_error,
-                                        bounds=(0, 0.001 * np.pi),
-                                        margin=0.5 * np.pi,
+                                        bounds=(0, 0.1),
+                                        margin=0.9,
                                         sigmoid='long_tail')
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
