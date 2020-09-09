@@ -9,7 +9,7 @@ from rrc_simulation import TriFingerPlatform
 from rrc_simulation import visual_objects
 from rrc_simulation.tasks import move_cube
 
-from dm_control.utils import rewards
+from dm_control.utils import rewards as dmr
 from scipy.spatial.transform import Rotation
 
 from envs import ActionType
@@ -96,6 +96,8 @@ class TaskFourEnv(gym.GoalEnv):
             "achieved_goal":
             object_state_space,
         })
+        
+        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(4,))
 
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
@@ -130,12 +132,12 @@ class TaskFourEnv(gym.GoalEnv):
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
-        in_place = rewards.tolerance(object_to_target,
+        in_place = dmr.tolerance(object_to_target,
                                      bounds=(0, 0.001 * cube_radius),
                                      margin=cube_radius,
                                      sigmoid='long_tail')
 
-        above_ground = rewards.tolerance(
+        above_ground = dmr.tolerance(
             object_pos[2],
             bounds=(target_pos[2] - 0.001 * min_height,
                     target_pos[2] + 0.001 * min_height),
@@ -148,7 +150,7 @@ class TaskFourEnv(gym.GoalEnv):
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp += rewards.tolerance(finger_to_object,
+            grasp += dmr.tolerance(finger_to_object,
                                        bounds=(0, 0.5 * cube_radius),
                                        margin=arena_radius,
                                        sigmoid='long_tail')
@@ -163,10 +165,13 @@ class TaskFourEnv(gym.GoalEnv):
         error_rot = goal_rot.inv() * actual_rot
         orientation_error = error_rot.magnitude() / np.pi
 
-        orientation = rewards.tolerance(orientation_error,
-                                        bounds=(0, 0.001 * np.pi),
-                                        margin=0.5 * np.pi,
+        orientation = dmr.tolerance(orientation_error,
+                                        bounds=(0, 0.01),
+                                        margin=0.99,
                                         sigmoid='long_tail')
+        
+        rewards = np.array([grasp, above_ground, in_place, orientation])
+        return rewards
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
         above_ground_weight = 10.0

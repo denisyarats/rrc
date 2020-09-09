@@ -132,10 +132,10 @@ class RewardMixer(nn.Module):
             
 class FixedRewardMixer(nn.Module):
     """Reward integrator"""
-    def __init__(self, reward_shape, alpha_0, alpha_1):
+    def __init__(self, reward_shape, alpha_0, alpha_1, alpha_2):
         super().__init__()
         self.reward_shape = reward_shape
-        self.alphas = np.array([alpha_0, alpha_1, alpha_1])
+        self.alphas = np.array([alpha_0, alpha_1, alpha_1, alpha_2])
         #import ipdb; ipdb.set_trace()
         self.outputs = dict()
 
