@@ -96,7 +96,7 @@ class TaskFourEnv(gym.GoalEnv):
             "achieved_goal":
             object_state_space,
         })
-        
+
         self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(4,))
 
     def compute_reward(self, observation, info):
@@ -133,9 +133,9 @@ class TaskFourEnv(gym.GoalEnv):
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
         in_place = dmr.tolerance(object_to_target,
-                                     bounds=(0, 0.001 * cube_radius),
-                                     margin=cube_radius,
-                                     sigmoid='long_tail')
+                                 bounds=(0, 0.001 * cube_radius),
+                                 margin=cube_radius,
+                                 sigmoid='long_tail')
 
         above_ground = dmr.tolerance(
             object_pos[2],
@@ -151,9 +151,9 @@ class TaskFourEnv(gym.GoalEnv):
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
             grasp += dmr.tolerance(finger_to_object,
-                                       bounds=(0, 0.5 * cube_radius),
-                                       margin=arena_radius,
-                                       sigmoid='long_tail')
+                                   bounds=(0, 0.5 * cube_radius),
+                                   margin=arena_radius,
+                                   sigmoid='long_tail')
 
         grasp /= len(finger_ids)
         #hand_away /= len(finger_ids)
@@ -162,14 +162,38 @@ class TaskFourEnv(gym.GoalEnv):
             observation['desired_goal']['orientation'])
         actual_rot = Rotation.from_quat(
             observation['achieved_goal']['orientation'])
+
+        goal_mat = goal_rot.as_matrix()
+        actual_mat = actual_rot.as_matrix()
+
+        def angle(v, u):
+            d = np.dot(v, u) / np.linalg.norm(v) / np.linalg.norm(u)
+            # between [-1, 1]
+            return d
+
+        #import ipdb; ipdb.set_trace()
+        d = []
+        for i in range(3):
+            d.append(angle(goal_mat[:, i], actual_mat[:, i]))
+
+        orientation_error = np.mean(d)
+
+        orientation = dmr.tolerance(orientation_error,
+                                    bounds=(0.999, 1.0),
+                                    margin=0.999,
+                                    sigmoid='long_tail')
+
+        rewards = np.array([grasp, above_ground, in_place, orientation])
+        return rewards
+
         error_rot = goal_rot.inv() * actual_rot
         orientation_error = error_rot.magnitude() / np.pi
 
         orientation = dmr.tolerance(orientation_error,
-                                        bounds=(0, 0.01),
-                                        margin=0.99,
-                                        sigmoid='long_tail')
-        
+                                    bounds=(0, 0.01),
+                                    margin=0.99,
+                                    sigmoid='long_tail')
+
         rewards = np.array([grasp, above_ground, in_place, orientation])
         return rewards
 

@@ -1,10 +1,10 @@
 # env
-difficulty: 1
+difficulty: 4
 env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
-excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
+excluded_obses: desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.28/085627_ddpg_teacher2_task23/75/model
@@ -54,11 +54,17 @@ hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
 random_nstep: true
-mixer_start: 100000
-mixer_period: 200000
+mixer_init_value: 0.001
+mixer_final_value: 10.0
+mixer_start: 10000
+mixer_period: 10000
 alpha_0: 2.0
 alpha_1: 10.0
 alpha_2: 10.0
+w0: 1.0
+w1: 5.0
+w2: 5.0
+w3: 10.0
 
 
 agent:
@@ -73,7 +79,7 @@ agent:
     device: ${device}
     critic_cfg: ${critic}
     actor_cfg: ${actor}
-    reward_mixer_cfg: ${fixed_reward_mixer}
+    reward_mixer_cfg: ${constant_reward_mixer}
     discount: 0.99
     lr: ${lr}
     actor_update_frequency: 1
@@ -108,8 +114,8 @@ reward_mixer:
   class: ddpg.RewardMixer
   params:
     reward_shape: ${agent.params.reward_shape}
-    init_values: [10.0, 1.0, 1.0]
-    final_values: [1.0, 10.0, 10.0]
+    init_value: ${mixer_init_value}
+    final_value: ${mixer_final_value}
     start: ${mixer_start}
     period: ${mixer_period}
     #starts: [${mixer_start}, ${mixer_start}]
@@ -123,6 +129,16 @@ fixed_reward_mixer:
     alpha_0: ${alpha_0}
     alpha_1: ${alpha_1}
     alpha_2: ${alpha_2}
+    
+    
+constant_reward_mixer:
+  class: ddpg.ConstantRewardMixer
+  params:
+    reward_shape: ${agent.params.reward_shape}
+    w0: ${w0}
+    w1: ${w1}
+    w2: ${w2}
+    w3: ${w3}
 
 experiment: bench
 
@@ -140,7 +156,7 @@ hydra:
         slurm:
           max_num_timeout: 100000
           time: 4319
-          partition: learnfair
-          #partition: priority
-          #comment: neurips_abstract_deadline_may_27
+          #partition: learnfair
+          partition: priority
+          comment: iclr_deadline_sep_22
     mem_limit: 64

@@ -95,15 +95,14 @@ class Critic(nn.Module):
 
 class RewardMixer(nn.Module):
     """Reward integrator"""
-    def __init__(self, reward_shape, init_values, final_values, start,
-                 period):
+    def __init__(self, reward_shape, init_value, final_value, start, period):
         super().__init__()
         self.reward_shape = reward_shape
-        self.init_values = np.array(init_values)
-        self.final_values = np.array(final_values)
-        self.starts = np.ones(self.init_values.shape) * start
-        self.periods = np.ones(self.init_values.shape) * period
-        self.weights = nn.Parameter(torch.tensor([init_values]))
+        self.init_values = np.ones(reward_shape) * init_value
+        self.final_values = np.ones(reward_shape) * final_value
+        self.starts = np.arange(reward_shape[0]) * start
+        self.periods = np.ones(reward_shape) * period
+        self.alphas = self.init_values.copy()
         #import ipdb; ipdb.set_trace()
         self.outputs = dict()
 
@@ -111,25 +110,24 @@ class RewardMixer(nn.Module):
         #import ipdb; ipdb.set_trace()
         ps = ((step - self.starts) / self.periods).clip(0.0, 1.0)
         dfs = self.final_values - self.init_values
-        alphas = self.init_values + dfs * ps
-        new_weights = np.random.dirichlet(alphas)
-        for i in range(alphas.shape[0]):
-            self.outputs[f'alpha_{i}'] = alphas[i]
-            self.outputs[f'weight_{i}'] = new_weights[i]
-        
-        for i in range(new_weights.shape[0]):
-            self.weights[0, i] = new_weights[i]
+        self.alphas = self.init_values + dfs * ps
 
     def forward(self, rewards):
         #import ipdb; ipdb.set_trace()
-        reward = (rewards * self.weights).sum(axis=1, keepdim=True)
+        #import ipdb; ipdb.set_trace()
+        w = np.random.dirichlet(self.alphas, size=rewards.shape[0])
+        for i in range(w.shape[1]):
+            self.outputs[f'alpha_{i}'] = self.alphas[i]
+            self.outputs[f'weight_{i}'] = w[:, i].mean()
+        w = torch.tensor(w, device=rewards.device).float()
+        reward = (rewards * w).sum(axis=1, keepdim=True)
         return reward
 
     def log(self, logger, step):
         for k, v in self.outputs.items():
             logger.log(f'train_mixer/{k}', v, step)
-            
-            
+
+
 class FixedRewardMixer(nn.Module):
     """Reward integrator"""
     def __init__(self, reward_shape, alpha_0, alpha_1, alpha_2):
@@ -146,6 +144,34 @@ class FixedRewardMixer(nn.Module):
             self.outputs[f'alpha_{i}'] = self.alphas[i]
             self.outputs[f'weight_{i}'] = w[:, i].mean()
         w = torch.tensor(w, device=rewards.device).float()
+        reward = (rewards * w).sum(axis=1, keepdim=True)
+        return reward
+
+    def log(self, logger, step):
+        for k, v in self.outputs.items():
+            logger.log(f'train_mixer/{k}', v, step)
+
+
+class ConstantRewardMixer(nn.Module):
+    """Reward integrator"""
+    def __init__(self, reward_shape, w0, w1, w2, w3):
+        super().__init__()
+        self.reward_shape = reward_shape
+        self.weights = np.array([w0, w1, w2, w3])
+        self.weights /= self.weights.sum()
+        #import ipdb; ipdb.set_trace()
+        self.outputs = dict()
+
+    def update(self, step):
+        pass
+
+    def forward(self, rewards):
+        #import ipdb; ipdb.set_trace()
+        w = torch.tensor(self.weights, device=rewards.device).float()
+        #import ipdb; ipdb.set_trace()
+        w = w.unsqueeze(0)
+        for i in range(w.shape[1]):
+            self.outputs[f'weight_{i}'] = w[:, i].mean()
         reward = (rewards * w).sum(axis=1, keepdim=True)
         return reward
 
@@ -271,6 +297,7 @@ class DDPGAgent(object):
         obs = self.preprocess_obs(obs)
         next_obs = self.preprocess_obs(next_obs)
 
+        self.reward_mixer.update(step)
         reward = self.reward_mixer(rewards)
 
         logger.log('train/batch_reward', reward.mean(), step)

@@ -1,5 +1,7 @@
 import numpy as np
 import gym
+from copy import deepcopy
+from scipy.spatial.transform import Rotation as R
 
 from rrc_simulation import visual_objects
 
@@ -14,6 +16,36 @@ def flat_space(space, value=None, keys=[]):
                                 None if value is None else value[key],
                                 keys + [key]):
                 yield x
+
+
+class QuaternionToMatrixWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        self.observation_space = deepcopy(self.env.observation_space)
+
+        self.observation_space.spaces['achieved_goal'].spaces[
+            'orientation'] = gym.spaces.Box(low=-1e9,
+                                            high=1e9,
+                                            shape=(9,),
+                                            dtype=np.float32)
+        self.observation_space.spaces['desired_goal'].spaces[
+            'orientation'] = gym.spaces.Box(low=-1e9,
+                                            high=1e9,
+                                            shape=(9,),
+                                            dtype=np.float32)
+
+    def observation(self, obs):
+        def quat_to_mat(q):
+            return R.from_quat(q).as_matrix().flatten().copy()
+
+        obs = deepcopy(obs)
+        obs['achieved_goal']['orientation'] = quat_to_mat(
+            obs['achieved_goal']['orientation'])
+        obs['desired_goal']['orientation'] = quat_to_mat(
+            obs['desired_goal']['orientation'])
+
+        return obs
 
 
 class FlattenObservationWrapper(gym.ObservationWrapper):
@@ -42,6 +74,7 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
             offset += n
 
     def observation(self, obs):
+
         observation = [
             x.flatten()
             for _, x, key in flat_space(self.env.observation_space, obs)

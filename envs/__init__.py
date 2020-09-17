@@ -79,6 +79,7 @@ def make(env_name,
 
     env.seed(seed)
 
+    #env = wrappers.QuaternionToMatrixWrapper(env)
     env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
