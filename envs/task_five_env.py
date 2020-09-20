@@ -15,7 +15,7 @@ from scipy.spatial.transform import Rotation
 from envs import ActionType
 
 
-class TaskFourEnv(gym.GoalEnv):
+class TaskFiveEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
     def __init__(
         self,
@@ -42,7 +42,7 @@ class TaskFourEnv(gym.GoalEnv):
         # Basic initialization
         # ====================
 
-        assert initializer.difficulty == 4
+        assert initializer.difficulty == 1
         self.initializer = initializer
         self.action_type = action_type
         self.visualization = visualization
@@ -98,8 +98,8 @@ class TaskFourEnv(gym.GoalEnv):
             "achieved_goal":
             object_state_space,
         })
-
-        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(4,))
+        
+        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(3,))
 
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
@@ -124,27 +124,17 @@ class TaskFourEnv(gym.GoalEnv):
         """
         cube_radius = move_cube._cube_3d_radius
         arena_radius = move_cube._ARENA_RADIUS
-        min_height = move_cube._min_height
-        max_height = move_cube._max_height
-
         robot_id = self.platform.simfinger.finger_id
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
-        object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
+        object_to_target = np.linalg.norm(object_pos - target_pos)
         in_place = dmr.tolerance(object_to_target,
-                                 bounds=(0, 0.001 * cube_radius),
-                                 margin=cube_radius,
-                                 sigmoid='long_tail')
-
-        above_ground = dmr.tolerance(
-            object_pos[2],
-            bounds=(target_pos[2] - 0.001 * min_height,
-                    target_pos[2] + 0.001 * min_height),
-            margin=0.999 * min_height,
-            sigmoid='long_tail')
+                                     bounds=(0, 0.001 * cube_radius),
+                                     margin=arena_radius,
+                                     sigmoid='long_tail')
 
         # compute reward to see that each fingert is close to the cube
         grasp = 0
@@ -152,59 +142,55 @@ class TaskFourEnv(gym.GoalEnv):
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
             finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp += dmr.tolerance(finger_to_object,
-                                   bounds=(0, 0.5 * cube_radius),
-                                   margin=arena_radius,
-                                   sigmoid='long_tail')
+            grasp = max(
+                grasp,
+                dmr.tolerance(finger_to_object,
+                                  bounds=(0, 0.5 * cube_radius),
+                                  margin=arena_radius,
+                                  sigmoid='long_tail'))
 
-        grasp /= len(finger_ids)
-        #hand_away /= len(finger_ids)
-
+            #finger_to_target = np.linalg.norm(finger_pos - target_pos)
+            #hand_away += rewards.tolerance(finger_to_target,
+            #                               bounds=(4 * radius, np.inf),
+            #                               margin=3 * radius,
+            #                               sigmoid='long_tail')
+            
+        #import ipdb; ipdb.set_trace()
+        
         actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
         goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
-
+        
         actual_corners = move_cube.get_cube_corner_positions(actual_pose)
         goal_corners = move_cube.get_cube_corner_positions(goal_pose)
-
-        orientation_errors = np.linalg.norm(goal_corners - actual_corners,
-                                            axis=1)
+        
+        
+        orientation_errors = np.linalg.norm(goal_corners - actual_corners, axis=1)
         orientation_error = np.max(orientation_errors[:self.num_corners])
+        
+        
 
         orientation = dmr.tolerance(orientation_error,
                                     bounds=(0, 0.001 * cube_radius),
                                     margin=arena_radius,
                                     sigmoid='long_tail')
 
-        rewards = np.array([grasp, above_ground, in_place, orientation])
-        return rewards
-
-        error_rot = goal_rot.inv() * actual_rot
-        orientation_error = error_rot.magnitude() / np.pi
-
-        orientation = dmr.tolerance(orientation_error,
-                                    bounds=(0, 0.01),
-                                    margin=0.99,
-                                    sigmoid='long_tail')
-
-        rewards = np.array([grasp, above_ground, in_place, orientation])
+        #import ipdb; ipdb.set_trace()
+        #grasp /= len(finger_ids)
+        #hand_away /= len(finger_ids)
+        rewards = np.array([grasp, in_place, orientation])
+        info['reward_0'] = 'grasp'
+        info['reward_1'] = 'orientation'
         return rewards
 
         #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
-        above_ground_weight = 10.0
-        orientation_weight = 10.0
-        in_place_weight = 5.0
+        in_place_weight = 10.0
 
         info['reward_grasp'] = grasp
-        info['reward_above_ground'] = above_ground
         #info['reward_hand_away'] = hand_away
         #info['reward_grasp_or_hand_away'] = grasp_or_hand_away
         info['reward_in_place'] = in_place
-        info['reward_orientation'] = orientation
 
-        reward = (grasp + above_ground_weight * above_ground +
-                  in_place_weight * in_place + orientation_weight *
-                  orientation) / (1.0 + in_place_weight + above_ground_weight +
-                                  orientation_weight)
+        reward = (grasp + in_place_weight * in_place) / (1.0 + in_place_weight)
         return reward
 
     def step(self, action):
@@ -272,6 +258,7 @@ class TaskFourEnv(gym.GoalEnv):
         #initial_robot_position = np.random.uniform(
         #    TriFingerPlatform.spaces.robot_position.low,
         #    TriFingerPlatform.spaces.robot_position.high)
+
         initial_robot_position = (
             TriFingerPlatform.spaces.robot_position.default)
         self.initializer.reset()

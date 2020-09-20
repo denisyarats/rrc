@@ -157,7 +157,7 @@ class ConstantRewardMixer(nn.Module):
     def __init__(self, reward_shape, w0, w1, w2, w3):
         super().__init__()
         self.reward_shape = reward_shape
-        self.weights = np.array([w0, w1, w2, w3])
+        self.weights = np.array([w0, w1, w2, w3])[:reward_shape[0]]
         self.weights /= self.weights.sum()
         #import ipdb; ipdb.set_trace()
         self.outputs = dict()
@@ -166,6 +166,7 @@ class ConstantRewardMixer(nn.Module):
         pass
 
     def forward(self, rewards):
+        #import ipdb; ipdb.set_trace()
         #import ipdb; ipdb.set_trace()
         w = torch.tensor(self.weights, device=rewards.device).float()
         #import ipdb; ipdb.set_trace()

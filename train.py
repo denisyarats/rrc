@@ -55,18 +55,18 @@ class Workspace(object):
 
         # make envs
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, self.train_initializer,
+                             cfg.episode_length, cfg.num_corners, self.train_initializer,
                              cfg.seed, cfg.use_curriculum, cfg.start_shape,
                              cfg.goal_shape, cfg.curriculum_buffer_capacity,
                              cfg.R_min, cfg.R_max, cfg.new_goal_freq,
                              cfg.target_task_freq, cfg.n_random_actions)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, self.eval_initializer,
+                                  cfg.episode_length, cfg.num_corners, self.eval_initializer,
                                   cfg.seed + 1, False)
         # always eval on the true target task
         self.true_eval_env = envs.make('cube', cfg.action_type,
                                        cfg.action_repeat,
-                                       move_cube.episode_length,
+                                       move_cube.episode_length, cfg.num_corners,
                                        self.true_eval_initializer,
                                        cfg.seed + 1)
 

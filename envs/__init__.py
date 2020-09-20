@@ -8,6 +8,8 @@ ActionType = cube_env.ActionType
 
 
 def make_initializer(name, difficulty, init_p=None, max_step=None):
+    if difficulty > 4:
+        difficulty = 1
     if name == 'fixed':
         return initializers.FixedInitializer(difficulty)
     elif name == 'fixed_goal':
@@ -25,6 +27,7 @@ def make(env_name,
          action_type,
          action_repeat,
          episode_length,
+         num_corners,
          initializer,
          seed,
          use_curriculum=False,
@@ -52,7 +55,8 @@ def make(env_name,
                    action_type=action_type,
                    frameskip=action_repeat,
                    visualization=False,
-                   episode_length=episode_length)
+                   episode_length=episode_length,
+                   num_corners=num_corners)
 
     if use_curriculum:
         if env_name == 'reach':
@@ -80,6 +84,7 @@ def make(env_name,
     env.seed(seed)
 
     #env = wrappers.QuaternionToMatrixWrapper(env)
+    env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
@@ -120,4 +125,9 @@ register(
 register(
     id="task4-v1",
     entry_point="envs.task_four_env:TaskFourEnv",
+)
+
+register(
+    id="task5-v1",
+    entry_point="envs.task_five_env:TaskFiveEnv",
 )

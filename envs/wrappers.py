@@ -4,6 +4,7 @@ from copy import deepcopy
 from scipy.spatial.transform import Rotation as R
 
 from rrc_simulation import visual_objects
+from rrc_simulation.tasks import move_cube
 
 
 def flat_space(space, value=None, keys=[]):
@@ -43,6 +44,75 @@ class QuaternionToMatrixWrapper(gym.ObservationWrapper):
         obs['achieved_goal']['orientation'] = quat_to_mat(
             obs['achieved_goal']['orientation'])
         obs['desired_goal']['orientation'] = quat_to_mat(
+            obs['desired_goal']['orientation'])
+
+        return obs
+
+
+class QuaternionToCornersWrapper(gym.ObservationWrapper):
+    def __init__(self, env, n):
+        super().__init__(env)
+
+        self.n = n
+        self.observation_space = deepcopy(self.env.observation_space)
+
+        self.observation_space.spaces['achieved_goal'].spaces[
+            'orientation'] = gym.spaces.Box(low=-1e9,
+                                            high=1e9,
+                                            shape=(3 * n,),
+                                            dtype=np.float32)
+        self.observation_space.spaces['desired_goal'].spaces[
+            'orientation'] = gym.spaces.Box(low=-1e9,
+                                            high=1e9,
+                                            shape=(3 * n,),
+                                            dtype=np.float32)
+
+    def observation(self, obs):
+        achieved_pose = move_cube.Pose.from_dict(obs['achieved_goal'])
+        desired_pose = move_cube.Pose.from_dict(obs['desired_goal'])
+
+        achieved_corners = move_cube.get_cube_corner_positions(
+            achieved_pose)[:self.n, :]
+        desired_corners = move_cube.get_cube_corner_positions(
+            desired_pose)[:self.n, :]
+
+        obs = deepcopy(obs)
+
+        obs['achieved_goal']['orientation'] = achieved_corners.flatten()
+        obs['desired_goal']['orientation'] = desired_corners.flatten()
+
+        return obs
+
+
+class QuaternionToEulerWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        self.observation_space = deepcopy(self.env.observation_space)
+
+        self.observation_space.spaces['achieved_goal'].spaces[
+            'orientation'] = gym.spaces.Box(low=-1.0,
+                                            high=1.0,
+                                            shape=(6,),
+                                            dtype=np.float32)
+        self.observation_space.spaces['desired_goal'].spaces[
+            'orientation'] = gym.spaces.Box(low=-1.0,
+                                            high=1.0,
+                                            shape=(6,),
+                                            dtype=np.float32)
+
+    def observation(self, obs):
+        def quat_to_euler(q):
+            e = R.from_quat(q).as_euler('xyz')
+            fs = []
+            for i in range(e.shape[0]):
+                fs += [np.sin(e[i]), np.cos(e[i])]
+            return np.array(fs)
+
+        obs = deepcopy(obs)
+        obs['achieved_goal']['orientation'] = quat_to_euler(
+            obs['achieved_goal']['orientation'])
+        obs['desired_goal']['orientation'] = quat_to_euler(
             obs['desired_goal']['orientation'])
 
         return obs

@@ -22,6 +22,7 @@ class CubeEnv(gym.GoalEnv):
         frameskip=1,
         visualization=False,
         episode_length=move_cube.episode_length,
+        num_corners=8
     ):
         """Initialize.
         Args:
