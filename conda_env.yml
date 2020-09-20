@@ -135,6 +135,6 @@ dependencies:
       - yapf
       - sklearn
       - matplotlib
-      - kornia
+      - kornia==0.3.2
       - termcolor
       - scikit-image
