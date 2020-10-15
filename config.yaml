@@ -4,12 +4,12 @@ env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
-num_corners: 8
+num_corners: 2
 excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false
-teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.08.28/085627_ddpg_teacher2_task23/75/model
-teacher_model_step: 9500000
+teacher_model_dir: /private/home/denisy/workspace/research/tmp/rrc_simulation/scripts
+teacher_model_step: 1
 teacher_init_p: 0.0
 teacher_max_step: 1000000
 teacher_excluded_obses: desired_goal_orientation:achieved_goal_orientation
@@ -63,9 +63,9 @@ alpha_0: 2.0
 alpha_1: 10.0
 alpha_2: 10.0
 w0: 1.0
-w1: 10.0
-w2: 10.0
-w3: 10.0
+w1: 1.0
+w2: 1.0
+w3: 1.0
 
 
 agent:

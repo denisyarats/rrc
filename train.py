@@ -55,18 +55,20 @@ class Workspace(object):
 
         # make envs
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, cfg.num_corners, self.train_initializer,
-                             cfg.seed, cfg.use_curriculum, cfg.start_shape,
+                             cfg.episode_length, cfg.num_corners,
+                             self.train_initializer, cfg.seed,
+                             cfg.use_curriculum, cfg.start_shape,
                              cfg.goal_shape, cfg.curriculum_buffer_capacity,
                              cfg.R_min, cfg.R_max, cfg.new_goal_freq,
                              cfg.target_task_freq, cfg.n_random_actions)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, cfg.num_corners, self.eval_initializer,
-                                  cfg.seed + 1, False)
+                                  cfg.episode_length, cfg.num_corners,
+                                  self.eval_initializer, cfg.seed + 1, False)
         # always eval on the true target task
         self.true_eval_env = envs.make('cube', cfg.action_type,
                                        cfg.action_repeat,
-                                       move_cube.episode_length, cfg.num_corners,
+                                       move_cube.episode_length,
+                                       cfg.num_corners,
                                        self.true_eval_initializer,
                                        cfg.seed + 1)
 
@@ -138,7 +140,6 @@ class Workspace(object):
     def run(self):
         episode, episode_step, done = 0, 0, True
         episode_reward = np.zeros(self.env.reward_space.shape)
-        teacher_uses = 0
         start_time = time.time()
         assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
         while self.step < self.cfg.num_train_steps:
@@ -165,8 +166,6 @@ class Workspace(object):
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
-                    self.logger.log('train/teacher_uses', teacher_uses,
-                                    self.step)
                     for i in range(episode_reward.shape[0]):
                         self.logger.log(
                             f'train/episode_reward_{i}',
@@ -177,13 +176,21 @@ class Workspace(object):
                         episode_reward[-1] / self.cfg.episode_length,
                         self.step)
 
+                ratio = max(self.cfg.teacher_max_step - self.step,
+                            0) / self.cfg.teacher_max_step
+                teacher_p = self.cfg.teacher_init_p * ratio
+                teacher_steps = int(np.random.rand() * teacher_p *
+                                    self.cfg.episode_length)
+                self.logger.log('train/teacher_p', teacher_p, self.step)
+                self.logger.log('train/teacher_steps', teacher_steps,
+                                self.step)
+
                 self.train_initializer.update(self.step)
                 obs = self.env.reset()
                 done = False
                 episode_reward = np.zeros(self.env.reward_space.shape)
                 episode_step = 0
                 episode += 1
-                teacher_uses = 0
 
                 self.logger.log('train/episode', episode, self.step)
                 self.train_initializer.log(self.logger, self.step)
@@ -195,13 +202,8 @@ class Workspace(object):
                                            action_space.high.max(),
                                            action_space.shape)
             else:
-                ratio = max(self.cfg.teacher_max_step - self.step,
-                            0) / self.cfg.teacher_max_step
-                teacher_p = self.cfg.teacher_init_p * ratio
-                self.logger.log('train/teacher_p', teacher_p, self.step)
-                use_teacher = self.cfg.use_teacher and np.random.rand(
-                ) < teacher_p
-                teacher_uses += int(use_teacher)
+
+                use_teacher = self.cfg.use_teacher and episode_step < teacher_steps
                 agent = self.teacher if use_teacher else self.agent
                 with utils.eval_mode(agent):
                     action = agent.act(obs, sample=True)

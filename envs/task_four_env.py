@@ -99,7 +99,9 @@ class TaskFourEnv(gym.GoalEnv):
             object_state_space,
         })
 
-        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(4,))
+        self.reward_space = gym.spaces.Box(low=0.0,
+                                           high=1.0,
+                                           shape=(2 + num_corners,))
 
     def compute_reward(self, observation, info):
         """Compute the reward for the given achieved and desired goal.
@@ -147,17 +149,17 @@ class TaskFourEnv(gym.GoalEnv):
             sigmoid='long_tail')
 
         # compute reward to see that each fingert is close to the cube
-        grasp = 0
+        #grasp = 0
         #hand_away = 0
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp += dmr.tolerance(finger_to_object,
-                                   bounds=(0, 0.5 * cube_radius),
-                                   margin=arena_radius,
-                                   sigmoid='long_tail')
+        #for finger_id in finger_ids:
+        #    finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+        #    finger_to_object = np.linalg.norm(finger_pos - object_pos)
+        #    grasp += dmr.tolerance(finger_to_object,
+        #                           bounds=(0, 0.5 * cube_radius),
+        #                           margin=arena_radius,
+        #                           sigmoid='long_tail')
 
-        grasp /= len(finger_ids)
+        #grasp /= len(finger_ids)
         #hand_away /= len(finger_ids)
 
         actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
@@ -167,45 +169,48 @@ class TaskFourEnv(gym.GoalEnv):
         goal_corners = move_cube.get_cube_corner_positions(goal_pose)
 
         orientation_errors = np.linalg.norm(goal_corners - actual_corners,
-                                            axis=1)
-        orientation_error = np.max(orientation_errors[:self.num_corners])
+                                            axis=1)[:self.num_corners]
 
-        orientation = dmr.tolerance(orientation_error,
-                                    bounds=(0, 0.001 * cube_radius),
-                                    margin=arena_radius,
-                                    sigmoid='long_tail')
+        rewards = [above_ground, in_place]
+        for e in orientation_errors:
+            r = dmr.tolerance(e,
+                              bounds=(0, 0.001 * cube_radius),
+                              margin=arena_radius,
+                              sigmoid='long_tail')
+            rewards.append(r)
 
-        rewards = np.array([grasp, above_ground, in_place, orientation])
-        return rewards
+        return np.array(rewards)
 
+    def compute_reward3(self, observation, info):
+        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
+        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
+
+        range_xy_dist = move_cube._ARENA_RADIUS * 2
+        range_z_dist = move_cube._max_height
+
+        xy_dist = np.linalg.norm(goal_pose.position[:2] -
+                                 actual_pose.position[:2])
+        z_dist = abs(goal_pose.position[2] - actual_pose.position[2])
+
+        # weight xy- and z-parts by their expected range
+        position_error = (xy_dist / range_xy_dist + z_dist / range_z_dist) / 2
+
+        position_reward = dmr.tolerance(position_error,
+                                        bounds=(0, 0.001),
+                                        margin=0.999,
+                                        sigmoid='long_tail')
+
+        goal_rot = Rotation.from_quat(goal_pose.orientation)
+        actual_rot = Rotation.from_quat(actual_pose.orientation)
         error_rot = goal_rot.inv() * actual_rot
         orientation_error = error_rot.magnitude() / np.pi
 
-        orientation = dmr.tolerance(orientation_error,
-                                    bounds=(0, 0.01),
-                                    margin=0.99,
-                                    sigmoid='long_tail')
+        orientation_reward = dmr.tolerance(orientation_error,
+                                           bounds=(0, 0.001),
+                                           margin=0.999,
+                                           sigmoid='long_tail')
 
-        rewards = np.array([grasp, above_ground, in_place, orientation])
-        return rewards
-
-        #grasp_or_hand_away = grasp * (1 - in_place) + hand_away * in_place
-        above_ground_weight = 10.0
-        orientation_weight = 10.0
-        in_place_weight = 5.0
-
-        info['reward_grasp'] = grasp
-        info['reward_above_ground'] = above_ground
-        #info['reward_hand_away'] = hand_away
-        #info['reward_grasp_or_hand_away'] = grasp_or_hand_away
-        info['reward_in_place'] = in_place
-        info['reward_orientation'] = orientation
-
-        reward = (grasp + above_ground_weight * above_ground +
-                  in_place_weight * in_place + orientation_weight *
-                  orientation) / (1.0 + in_place_weight + above_ground_weight +
-                                  orientation_weight)
-        return reward
+        return np.array([position_reward, orientation_reward])
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.
