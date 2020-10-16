@@ -50,27 +50,14 @@ class Workspace(object):
                                                       cfg.difficulty,
                                                       cfg.curriculum_init_p,
                                                       cfg.curriculum_max_step)
-        self.true_eval_initializer = envs.make_initializer(
-            'random', cfg.difficulty)
 
         # make envs
         self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                              cfg.episode_length, cfg.num_corners,
-                             self.train_initializer, cfg.seed,
-                             cfg.use_curriculum, cfg.start_shape,
-                             cfg.goal_shape, cfg.curriculum_buffer_capacity,
-                             cfg.R_min, cfg.R_max, cfg.new_goal_freq,
-                             cfg.target_task_freq, cfg.n_random_actions)
+                             self.train_initializer, cfg.seed)
         self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
                                   cfg.episode_length, cfg.num_corners,
-                                  self.eval_initializer, cfg.seed + 1, False)
-        # always eval on the true target task
-        self.true_eval_env = envs.make('cube', cfg.action_type,
-                                       cfg.action_repeat,
-                                       move_cube.episode_length,
-                                       cfg.num_corners,
-                                       self.true_eval_initializer,
-                                       cfg.seed + 1)
+                                  self.eval_initializer, cfg.seed + 1)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -102,14 +89,13 @@ class Workspace(object):
 
         self.step = 0
 
-    def evaluate(self, env, tag='eval'):
-        assert tag in ['eval', 'true_eval']
+    def evaluate(self, env):
         average_episode_reward = np.zeros(self.env.reward_space.shape)
         average_episode_length = 0
-        denominator = 1 if tag == 'true_eval' else self.cfg.episode_length
+        denominator = self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
             obs = env.reset()
-            self.video_recorder.init(enabled=(episode == 0 and tag == 'eval'))
+            self.video_recorder.init(enabled=(episode == 0))
             done = False
             episode_reward = np.zeros(self.env.reward_space.shape)
             episode_step = 0
@@ -129,13 +115,13 @@ class Workspace(object):
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
         for i in range(average_episode_reward.shape[0]):
-            self.logger.log(tag + f'/episode_reward_{i}',
+            self.logger.log(f'eval/episode_reward_{i}',
                             average_episode_reward[i], self.step)
-        self.logger.log(tag + f'/episode_reward', average_episode_reward[-1],
+        self.logger.log(f'eval/episode_reward', average_episode_reward[-1],
                         self.step)
-        self.logger.log(tag + '/episode_length', average_episode_length,
+        self.logger.log('eval/episode_length', average_episode_length,
                         self.step)
-        self.logger.dump(self.step, ty=tag)
+        self.logger.dump(self.step, ty='eval')
 
     def run(self):
         episode, episode_step, done = 0, 0, True
@@ -147,10 +133,7 @@ class Workspace(object):
             if self.step % (self.cfg.eval_frequency //
                             self.cfg.action_repeat) == 0:
                 self.logger.log('eval/episode', episode, self.step)
-                self.evaluate(self.eval_env, tag='eval')
-                if self.cfg.run_true_eval:
-                    self.logger.log('true_eval/episode', episode, self.step)
-                    self.evaluate(self.true_eval_env, tag='true_eval')
+                self.evaluate(self.eval_env)
 
             if self.step % (self.cfg.save_frequency //
                             self.cfg.action_repeat) == 0:

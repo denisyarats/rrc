@@ -63,8 +63,6 @@ class MetersGroup(object):
         for key, meter in self._meters.items():
             if key.startswith('train'):
                 key = key[len('train') + 1:]
-            elif key.startswith('true_eval'):
-                key = key[len('true_eval') + 1:]
             else:
                 key = key[len('eval') + 1:]
             key = key.replace('/', '_')
@@ -92,9 +90,9 @@ class MetersGroup(object):
             raise f'invalid format type: {ty}'
 
     def _dump_to_console(self, data, prefix):
-        color = dict(train='yellow', eval='green', true_eval='red')[prefix]
+        color = dict(train='yellow', eval='green')[prefix]
         prefix = colored(prefix, color)
-        pieces = [f'| {prefix: <18}']
+        pieces = [f'| {prefix: <15}']
         for key, disp_key, ty in self._formating:
             value = data.get(key, 0)
             pieces.append(self._format(disp_key, value, ty))
@@ -139,8 +137,6 @@ class Logger(object):
                                      formating=train_format)
         self._eval_mg = MetersGroup(os.path.join(log_dir, 'eval'),
                                     formating=COMMON_EVAL_FORMAT)
-        self._true_eval_mg = MetersGroup(os.path.join(log_dir, 'true_eval'),
-                                         formating=COMMON_EVAL_FORMAT)
 
     def _should_log(self, step, log_frequency):
         log_frequency = log_frequency or self._log_frequency
@@ -177,14 +173,12 @@ class Logger(object):
         if not self._should_log(step, log_frequency):
             return
         assert key.startswith('train') or key.startswith(
-            'eval') or key.startswith('true_eval')
+            'eval')
         if type(value) == torch.Tensor:
             value = value.item()
         self._try_sw_log(key, value / n, step)
         if key.startswith('train'):
             mg = self._train_mg
-        elif key.startswith('true_eval'):
-            mg = self._true_eval_mg
         else:
             mg = self._eval_mg
         mg.log(key, value, n)
@@ -204,21 +198,21 @@ class Logger(object):
         if not self._should_log(step, log_frequency):
             return
         assert key.startswith('train') or key.startswith(
-            'eval') or key.startswith('true_eval')
+            'eval')
         self._try_sw_log_image(key, image, step)
 
     def log_video(self, key, frames, step, log_frequency=None):
         if not self._should_log(step, log_frequency):
             return
         assert key.startswith('train') or key.startswith(
-            'eval') or key.startswith('true_eval')
+            'eval')
         self._try_sw_log_video(key, frames, step)
 
     def log_histogram(self, key, histogram, step, log_frequency=None):
         if not self._should_log(step, log_frequency):
             return
         assert key.startswith('train') or key.startswith(
-            'eval') or key.startswith('true_eval')
+            'eval')
         self._try_sw_log_histogram(key, histogram, step)
 
     def dump(self, step, save=True, ty=None):
@@ -226,12 +220,9 @@ class Logger(object):
         if ty is None:
             self._train_mg.dump(step, 'train', save)
             self._eval_mg.dump(step, 'eval', save)
-            self._true_eval_mg.dump(step, 'true_eval', save)
         elif ty == 'eval':
             self._eval_mg.dump(step, 'eval', save)
         elif ty == 'train':
             self._train_mg.dump(step, 'train', save)
-        elif ty == 'true_eval':
-            self._true_eval_mg.dump(step, 'true_eval', save)
         else:
             raise f'invalid log type: {ty}'

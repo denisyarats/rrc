@@ -3,8 +3,8 @@ import gym
 from copy import deepcopy
 from scipy.spatial.transform import Rotation as R
 
-from rrc_simulation import visual_objects
-from rrc_simulation.tasks import move_cube
+from trifinger_simulation import visual_objects
+from trifinger_simulation.tasks import move_cube
 
 
 def flat_space(space, value=None, keys=[]):
@@ -186,13 +186,3 @@ class CubeMarkerWrapper(gym.Wrapper):
             orientation=self.env.goal['orientation'])
 
         return obs
-
-
-"""
-def FlattenActionWrapper(gym.ActionWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-
-    def action(self, action):
-        pass
-"""

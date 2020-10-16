@@ -1,15 +1,13 @@
 import numpy as np
 import gym
 
-from envs import initializers, wrappers, curriculum
-from rrc_simulation.gym_wrapper.envs import cube_env
+from envs import initializers, wrappers
+from trifinger_simulation.gym_wrapper.envs import cube_env
 
 ActionType = cube_env.ActionType
 
 
 def make_initializer(name, difficulty, init_p=None, max_step=None):
-    if difficulty > 4:
-        difficulty = 1
     if name == 'fixed':
         return initializers.FixedInitializer(difficulty)
     elif name == 'fixed_goal':
@@ -29,24 +27,13 @@ def make(env_name,
          episode_length,
          num_corners,
          initializer,
-         seed,
-         use_curriculum=False,
-         start_shape=None,
-         goal_shape=None,
-         buffer_capacity=None,
-         R_min=None,
-         R_max=None,
-         new_goal_freq=None,
-         target_task_freq=None,
-         n_random_actions=None):
-    assert action_type in ['position', 'torque', 'xyz', 'both']
+         seed):
+    assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
         action_type = ActionType.POSITION
     elif action_type == 'torque':
         action_type = ActionType.TORQUE
-    elif action_type == 'xyz':
-        action_type = 'xyz'
     else:
         action_type = ActionType.TORQUE_AND_POSITION
 
@@ -54,36 +41,11 @@ def make(env_name,
                    initializer=initializer,
                    action_type=action_type,
                    frameskip=action_repeat,
-                   visualization=False,
                    episode_length=episode_length,
                    num_corners=num_corners)
 
-    if use_curriculum:
-        if env_name == 'reach':
-            env = curriculum.ReachCurriculum(env,
-                                             start_shape=start_shape,
-                                             goal_shape=goal_shape,
-                                             buffer_capacity=buffer_capacity,
-                                             R_min=R_min,
-                                             R_max=R_max,
-                                             new_goal_freq=new_goal_freq,
-                                             target_task_freq=target_task_freq,
-                                             n_random_actions=n_random_actions)
-        else:
-            env = curriculum.CubeCurriculum(env,
-                                            start_shape=start_shape,
-                                            goal_shape=goal_shape,
-                                            buffer_capacity=buffer_capacity,
-                                            R_min=R_min,
-                                            R_max=R_max,
-                                            new_goal_freq=new_goal_freq,
-                                            target_task_freq=target_task_freq,
-                                            n_random_actions=n_random_actions,
-                                            difficulty=initializer.difficulty)
-
     env.seed(seed)
 
-    #env = wrappers.QuaternionToMatrixWrapper(env)
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
@@ -97,15 +59,7 @@ def make(env_name,
 
 from gym.envs.registration import register
 
-register(
-    id="reach-v1",
-    entry_point="envs.reach_env:ReachEnv",
-)
 
-register(
-    id="cube-v1",
-    entry_point="envs.cube_env:CubeEnv",
-)
 
 register(
     id="task1-v1",
@@ -115,19 +69,4 @@ register(
 register(
     id="task2-v1",
     entry_point="envs.task_two_env:TaskTwoEnv",
-)
-
-register(
-    id="task3-v1",
-    entry_point="envs.task_three_env:TaskThreeEnv",
-)
-
-register(
-    id="task4-v1",
-    entry_point="envs.task_four_env:TaskFourEnv",
-)
-
-register(
-    id="task5-v1",
-    entry_point="envs.task_five_env:TaskFiveEnv",
 )

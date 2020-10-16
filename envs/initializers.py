@@ -3,7 +3,7 @@ import enum
 import numpy as np
 import gym
 
-from rrc_simulation.tasks import move_cube
+from trifinger_simulation.tasks import move_cube
 
 
 class RandomInitializer:

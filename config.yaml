@@ -1,5 +1,5 @@
 # env
-difficulty: 4
+difficulty: 1
 env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
@@ -18,16 +18,6 @@ train_initializer: random
 eval_initializer: random
 curriculum_max_step: 1000000
 curriculum_init_p: 0.0
-# david curriculum
-use_curriculum: false
-start_shape: (16,)
-goal_shape: (7,)
-curriculum_buffer_capacity: 10000
-R_min: 0.2
-R_max: 0.9
-new_goal_freq: 10
-target_task_freq: 4
-n_random_actions: 50
 # train
 num_train_steps: 1000000
 num_seed_steps: 1000
@@ -37,7 +27,6 @@ seed: 1
 # eval
 eval_frequency: 10000
 num_eval_episodes: 10
-run_true_eval: false
 # misc
 log_frequency_step: 10000
 log_save_tb: true
@@ -63,7 +52,7 @@ alpha_0: 2.0
 alpha_1: 10.0
 alpha_2: 10.0
 w0: 1.0
-w1: 1.0
+w1: 10.0
 w2: 1.0
 w3: 1.0
 
