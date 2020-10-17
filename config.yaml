@@ -5,7 +5,7 @@ action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
 num_corners: 2
-excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
+excluded_obses: desired_goal_orientation:achieved_goal_orientation:action
 # teacher
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/tmp/rrc_simulation/scripts
@@ -34,7 +34,7 @@ save_video: true
 video_fps: 50
 device: cuda
 # saving
-save_frequency: 100000
+save_frequency: 10000
 # global params
 lr: 1e-4
 batch_size: 128

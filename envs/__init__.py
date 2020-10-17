@@ -46,7 +46,8 @@ def make(env_name,
 
     env.seed(seed)
 
-    env = wrappers.QuaternionToCornersWrapper(env, num_corners)
+    import ipdb; ipdb.set_trace()
+    #env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
