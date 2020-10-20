@@ -87,7 +87,7 @@ class Workspace(object):
 
         self.step = 0
 
-    def evaluate(self, env):
+    def evaluate(self, env, agent):
         average_episode_reward = np.zeros(self.env.reward_space.shape)
         average_episode_length = 0
         denominator = self.cfg.episode_length
@@ -99,8 +99,8 @@ class Workspace(object):
             episode_step = 0
             reward_infos = defaultdict(float)
             while not done:
-                with utils.eval_mode(self.agent):
-                    action = self.agent.act(obs, sample=False)
+                with utils.eval_mode(agent):
+                    action = agent.act(obs, sample=False)
                 obs, reward, done, info = env.step(action)
                 self.video_recorder.record()
                 episode_reward += reward
@@ -130,7 +130,7 @@ class Workspace(object):
             # evaluate agent periodically
             if self.step % self.cfg.eval_frequency == 0:
                 self.logger.log('eval/episode', episode, self.step)
-                self.evaluate(self.eval_env)
+                self.evaluate(self.eval_env, self.agent)
 
             if self.step % (self.cfg.save_frequency) == 0:
                 self.agent.save(self.model_dir, self.step)

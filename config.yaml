@@ -10,7 +10,7 @@ excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/task_${difficulty}
 teacher_model_step: 0
-teacher_init_p: 0.5
+teacher_init_p: 1.0
 teacher_max_step: 1000000
 teacher_excluded_obses: action #desired_goal_orientation:achieved_goal_orientation
 # denis curriculum
