@@ -46,6 +46,7 @@ class TaskFourEnv(gym.GoalEnv):
         self.action_type = action_type
         self.episode_length = episode_length * frameskip
         assert self.episode_length <= move_cube.episode_length
+        self.num_corners = num_corners
 
         self.info = {"difficulty": self.initializer.difficulty}
 
