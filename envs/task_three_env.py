@@ -15,7 +15,7 @@ from dm_control.utils import rewards as dmr
 from envs import ActionType
 
 
-class TaskOneEnv(gym.GoalEnv):
+class TaskThreeEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
     def __init__(
         self,
@@ -23,7 +23,7 @@ class TaskOneEnv(gym.GoalEnv):
         action_type=ActionType.TORQUE,
         frameskip=1,
         episode_length=move_cube.episode_length,
-        num_corners=8,
+        num_corners=0,
     ):
         """Initialize.
 
@@ -41,10 +41,11 @@ class TaskOneEnv(gym.GoalEnv):
         # Basic initialization
         # ====================
 
-        assert initializer.difficulty == 1
+        assert initializer.difficulty == 3
         self.initializer = initializer
         self.action_type = action_type
-        self.episode_length = episode_length
+        self.episode_length = episode_length * frameskip
+        assert self.episode_length <= move_cube.episode_length
 
         self.info = {"difficulty": self.initializer.difficulty}
 
@@ -126,37 +127,54 @@ class TaskOneEnv(gym.GoalEnv):
             self.object_state_space,
         })
 
-        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
+        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(2,))
 
     def compute_reward(self, observation, info):
+        """Compute the reward for the given achieved and desired goal.
+
+        Args:
+            achieved_goal (dict): Current pose of the object.
+            desired_goal (dict): Goal pose of the object.
+            info (dict): An info dictionary containing a field "difficulty"
+                which specifies the difficulty level.
+
+        Returns:
+            float: The reward that corresponds to the provided achieved goal
+            w.r.t. to the desired goal. Note that the following should always
+            hold true::
+
+                ob, reward, done, info = env.step()
+                assert reward == env.compute_reward(
+                    ob['achieved_goal'],
+                    ob['desired_goal'],
+                    info,
+                )
+        """
         cube_radius = move_cube._cube_3d_radius
         arena_radius = move_cube._ARENA_RADIUS
+        min_height = move_cube._min_height
+        max_height = move_cube._max_height
+
         robot_id = self.platform.simfinger.finger_id
         finger_ids = self.platform.simfinger.pybullet_tip_link_indices
 
         # compute reward to see if the object reached the target
         object_pos = observation['achieved_goal']['position']
         target_pos = observation['desired_goal']['position']
-        object_to_target = np.linalg.norm(object_pos - target_pos)
+        object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
         in_place = dmr.tolerance(object_to_target,
                                  bounds=(0, 0.001 * cube_radius),
-                                 margin=arena_radius,
+                                 margin=cube_radius,
                                  sigmoid='long_tail')
 
-        # compute reward to see that each fingert is close to the cube
-        grasp = 0
-        #hand_away = 0
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(
-                grasp,
-                dmr.tolerance(finger_to_object,
-                              bounds=(0, 0.5 * cube_radius),
-                              margin=arena_radius,
-                              sigmoid='long_tail'))
+        above_ground = dmr.tolerance(
+            object_pos[2],
+            bounds=(target_pos[2] - 0.001 * min_height,
+                    target_pos[2] + 0.001 * min_height),
+            margin=0.999 * min_height,
+            sigmoid='long_tail')
 
-        rewards = np.array([in_place])
+        rewards = np.array([above_ground, in_place])
         return rewards
 
     def step(self, action):

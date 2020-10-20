@@ -35,7 +35,6 @@ class Workspace(object):
         self.logger = Logger(self.work_dir,
                              save_tb=cfg.log_save_tb,
                              log_frequency=cfg.log_frequency_step,
-                             action_repeat=cfg.action_repeat,
                              agent=cfg.agent.name)
 
         utils.set_seed_everywhere(cfg.seed)
@@ -59,7 +58,6 @@ class Workspace(object):
                                   cfg.episode_length, cfg.num_corners,
                                   self.eval_initializer, cfg.seed + 1)
 
-        import ipdb; ipdb.set_trace()
         obs_space = self.env.observation_space
         action_space = self.env.action_space
         reward_space = self.env.reward_space
@@ -85,8 +83,7 @@ class Workspace(object):
                                           self.device, cfg.random_nstep)
 
         self.video_recorder = VideoRecorder(
-            self.work_dir if cfg.save_video else None,
-            fps=cfg.video_fps)
+            self.work_dir if cfg.save_video else None, fps=cfg.video_fps)
 
         self.step = 0
 
@@ -111,7 +108,7 @@ class Workspace(object):
 
             average_episode_reward += episode_reward / denominator
             average_episode_length += episode_step
-            self.video_recorder.save(f'{self.step * self.cfg.action_repeat}.mp4')
+            self.video_recorder.save(f'{self.step}.mp4')
 
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
@@ -129,17 +126,14 @@ class Workspace(object):
         episode_reward = np.zeros(self.env.reward_space.shape)
         start_time = time.time()
         assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
-        assert self.cfg.episode_length % self.cfg.action_repeat == 0, 'make sure that action repeat divides episode length'
-        while self.step * self.cfg.action_repeat <= self.cfg.num_train_steps:
+        while self.step <= self.cfg.num_train_steps:
             # evaluate agent periodically
-            if self.step % (self.cfg.eval_frequency //
-                            self.cfg.action_repeat) == 0:
+            if self.step % self.cfg.eval_frequency == 0:
                 self.logger.log('eval/episode', episode, self.step)
                 self.evaluate(self.eval_env)
 
-            if self.step % (self.cfg.save_frequency //
-                            self.cfg.action_repeat) == 0:
-                self.agent.save(self.model_dir, self.step * self.cfg.action_repeat)
+            if self.step % (self.cfg.save_frequency) == 0:
+                self.agent.save(self.model_dir, self.step)
 
             if done:
                 if self.step > 0:
@@ -148,7 +142,7 @@ class Workspace(object):
                     start_time = time.time()
                     self.logger.dump(
                         self.step,
-                        save=(self.step > self.cfg.num_seed_steps // self.cfg.action_repeat),
+                        save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
                     for i in range(episode_reward.shape[0]):
@@ -161,7 +155,7 @@ class Workspace(object):
                         episode_reward[-1] / self.cfg.episode_length,
                         self.step)
 
-                ratio = max(self.cfg.teacher_max_step - self.step * self.cfg.action_repeat,
+                ratio = max(self.cfg.teacher_max_step - self.step,
                             0) / self.cfg.teacher_max_step
                 teacher_p = self.cfg.teacher_init_p * ratio
                 teacher_steps = int(np.random.rand() * teacher_p *
@@ -170,7 +164,7 @@ class Workspace(object):
                 self.logger.log('train/teacher_steps', teacher_steps,
                                 self.step)
 
-                self.train_initializer.update(self.step * self.cfg.action_repeat)
+                self.train_initializer.update(self.step)
                 obs = self.env.reset()
                 done = False
                 episode_reward = np.zeros(self.env.reward_space.shape)
@@ -180,7 +174,7 @@ class Workspace(object):
                 self.logger.log('train/episode', episode, self.step)
 
             # sample action for data collection
-            if self.step < self.cfg.num_seed_steps // self.cfg.action_repeat:
+            if self.step < self.cfg.num_seed_steps:
                 action_space = self.env.action_space
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),
@@ -193,7 +187,7 @@ class Workspace(object):
                     action = agent.act(obs, sample=True)
 
             # run training update
-            if self.step >= self.cfg.num_seed_steps // self.cfg.action_repeat:
+            if self.step >= self.cfg.num_seed_steps:
                 for _ in range(self.cfg.num_train_iters):
                     self.agent.update(self.replay_buffer, self.logger,
                                       self.step)

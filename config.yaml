@@ -1,18 +1,18 @@
 # env
-difficulty: 1
+difficulty: 4
 env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
-num_corners: 2
-excluded_obses: desired_goal_orientation:achieved_goal_orientation:action
+num_corners: 1
+excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false
-teacher_model_dir: /private/home/denisy/workspace/research/tmp/rrc_simulation/scripts
-teacher_model_step: 1
-teacher_init_p: 0.0
+teacher_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/task_${difficulty}
+teacher_model_step: 0
+teacher_init_p: 0.5
 teacher_max_step: 1000000
-teacher_excluded_obses: desired_goal_orientation:achieved_goal_orientation
+teacher_excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 # denis curriculum
 train_initializer: random
 eval_initializer: random
@@ -52,7 +52,7 @@ alpha_0: 2.0
 alpha_1: 10.0
 alpha_2: 10.0
 w0: 1.0
-w1: 10.0
+w1: 1.0
 w2: 1.0
 w3: 1.0
 

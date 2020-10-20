@@ -21,13 +21,8 @@ def make_initializer(name, difficulty, init_p=None, max_step=None):
         assert False, f'wrong initializer: {name}'
 
 
-def make(env_name,
-         action_type,
-         action_repeat,
-         episode_length,
-         num_corners,
-         initializer,
-         seed):
+def make(env_name, action_type, action_repeat, episode_length, num_corners,
+         initializer, seed):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -46,8 +41,7 @@ def make(env_name,
 
     env.seed(seed)
 
-    import ipdb; ipdb.set_trace()
-    #env = wrappers.QuaternionToCornersWrapper(env, num_corners)
+    env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
     env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
@@ -60,14 +54,17 @@ def make(env_name,
 
 from gym.envs.registration import register
 
-
-
 register(
     id="task1-v1",
     entry_point="envs.task_one_env:TaskOneEnv",
 )
 
 register(
-    id="task2-v1",
-    entry_point="envs.task_two_env:TaskTwoEnv",
+    id="task3-v1",
+    entry_point="envs.task_three_env:TaskThreeEnv",
+)
+
+register(
+    id="task4-v1",
+    entry_point="envs.task_four_env:TaskFourEnv",
 )
