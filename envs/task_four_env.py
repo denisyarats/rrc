@@ -4,6 +4,7 @@ import enum
 import numpy as np
 import gym
 import pybullet
+from copy import deepcopy
 
 import trifinger_simulation
 import trifinger_simulation.visual_objects
@@ -13,6 +14,7 @@ from trifinger_simulation.tasks import move_cube
 from dm_control.utils import rewards as dmr
 
 from envs import ActionType
+from envs.visual_objects import OrientationMarker, CubeMarker
 
 
 class TaskFourEnv(gym.GoalEnv):
@@ -121,11 +123,11 @@ class TaskFourEnv(gym.GoalEnv):
                 "torque": robot_torque_space,
             }),
             "action":
-            self.action_space,
+            deepcopy(self.action_space),
             "desired_goal":
-            self.object_state_space,
+            deepcopy(self.object_state_space),
             "achieved_goal":
-            self.object_state_space,
+            deepcopy(self.object_state_space),
         })
 
         self.reward_space = gym.spaces.Box(low=0.0,
@@ -229,6 +231,15 @@ class TaskFourEnv(gym.GoalEnv):
 
         is_done = self.step_count == self.episode_length
 
+        self.goal_marker.set_state(observation['desired_goal']['position'],
+                                   observation['desired_goal']['orientation'])
+        self.goal_orientation_marker.set_state(
+            observation['desired_goal']['position'],
+            observation['desired_goal']['orientation'])
+        self.object_orientation_marker.set_state(
+            observation['achieved_goal']['position'],
+            observation['achieved_goal']['orientation'])
+
         return observation, reward, is_done, self.info
 
     def reset(self):
@@ -275,10 +286,26 @@ class TaskFourEnv(gym.GoalEnv):
             initial_object_pose=initial_object_pose,
         )
 
-        self.goal_marker = trifinger_simulation.visual_objects.CubeMarker(
+        self.goal_marker = CubeMarker(
             width=0.065,
-            position=self.goal["position"],
-            orientation=self.goal["orientation"],
+            position=goal_object_pose.position,
+            orientation=goal_object_pose.orientation,
+            physicsClientId=self.platform.simfinger._pybullet_client_id,
+        )
+
+        self.object_orientation_marker = OrientationMarker(
+            length=0.5 * move_cube._CUBE_WIDTH,
+            radius=0.01,
+            position=initial_object_pose.position,
+            orientation=initial_object_pose.orientation,
+            physicsClientId=self.platform.simfinger._pybullet_client_id,
+        )
+
+        self.goal_orientation_marker = OrientationMarker(
+            length=0.5 * move_cube._CUBE_WIDTH,
+            radius=0.01,
+            position=goal_object_pose.position,
+            orientation=goal_object_pose.orientation,
             physicsClientId=self.platform.simfinger._pybullet_client_id,
         )
 
@@ -317,6 +344,7 @@ class TaskFourEnv(gym.GoalEnv):
                 "orientation": camera_observation.object_pose.orientation,
             },
         }
+
         return observation
 
     def _gym_action_to_robot_action(self, gym_action):

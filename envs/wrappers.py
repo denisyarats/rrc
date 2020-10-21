@@ -56,16 +56,21 @@ class QuaternionToCornersWrapper(gym.ObservationWrapper):
         self.n = n
         self.observation_space = deepcopy(self.env.observation_space)
 
-        self.observation_space.spaces['achieved_goal'].spaces[
-            'orientation'] = gym.spaces.Box(low=-1e9,
-                                            high=1e9,
-                                            shape=(3 * n,),
-                                            dtype=np.float32)
-        self.observation_space.spaces['desired_goal'].spaces[
-            'orientation'] = gym.spaces.Box(low=-1e9,
-                                            high=1e9,
-                                            shape=(3 * n,),
-                                            dtype=np.float32)
+        del self.observation_space.spaces['achieved_goal'].spaces[
+            'orientation']
+        del self.observation_space.spaces['desired_goal'].spaces['orientation']
+
+        for i in range(n):
+            self.observation_space.spaces['achieved_goal'].spaces[
+                f'corner_{i}'] = gym.spaces.Box(low=-1e9,
+                                                high=1e9,
+                                                shape=(3,),
+                                                dtype=np.float32)
+            self.observation_space.spaces['desired_goal'].spaces[
+                f'corner_{i}'] = gym.spaces.Box(low=-1e9,
+                                                high=1e9,
+                                                shape=(3,),
+                                                dtype=np.float32)
 
     def observation(self, obs):
         achieved_pose = move_cube.Pose.from_dict(obs['achieved_goal'])
@@ -78,8 +83,12 @@ class QuaternionToCornersWrapper(gym.ObservationWrapper):
 
         obs = deepcopy(obs)
 
-        obs['achieved_goal']['orientation'] = achieved_corners.flatten()
-        obs['desired_goal']['orientation'] = desired_corners.flatten()
+        del obs['achieved_goal']['orientation']
+        del obs['desired_goal']['orientation']
+
+        for i in range(self.n):
+            obs['achieved_goal'][f'corner_{i}'] = achieved_corners[i].copy()
+            obs['desired_goal'][f'corner_{i}'] = desired_corners[i].copy()
 
         return obs
 
