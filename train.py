@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-import envs
+import envs as envs
 import hydra
 import torch
 import utils
@@ -115,7 +115,7 @@ class Workspace(object):
         for i in range(average_episode_reward.shape[0]):
             self.logger.log(f'eval/episode_reward_{i}',
                             average_episode_reward[i], self.step)
-        self.logger.log(f'eval/episode_reward', average_episode_reward[-1],
+        self.logger.log(f'eval/episode_reward', np.mean(average_episode_reward),
                         self.step)
         self.logger.log('eval/episode_length', average_episode_length,
                         self.step)

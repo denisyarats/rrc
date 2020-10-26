@@ -4,6 +4,7 @@ import numpy as np
 import gym
 
 from trifinger_simulation.tasks import move_cube
+from scipy.spatial.transform import Rotation
 
 
 class RandomInitializer:
@@ -32,6 +33,59 @@ class RandomInitializer:
     def get_goal(self):
         """Get a random goal depending on the difficulty."""
         return move_cube.sample_goal(difficulty=self.difficulty)
+
+
+class CustomRandomInitializer:
+    """Initializer that samples random initial states and goals."""
+    def __init__(self, difficulty):
+        """Initialize.
+
+        Args:
+            difficulty (int):  Difficulty level for sampling goals.
+        """
+        self.difficulty = difficulty
+
+    def reset(self):
+        pass
+
+    def update(self, step):
+        pass
+
+    def log(self, logger, step):
+        pass
+
+    def get_initial_state(self):
+        """Get a random initial object pose (always on the ground)."""
+        radius = 0.5 * move_cube._max_cube_com_distance_to_center * np.sqrt(
+            move_cube.random.random())
+        theta = move_cube.random.uniform(0, 2 * np.pi)
+        x = radius * np.cos(theta)
+        y = radius * np.sin(theta)
+        z = move_cube._CUBE_WIDTH / 2
+
+        yaw = move_cube.random.uniform(0, 2 * np.pi)
+        orientation = Rotation.from_euler("z", yaw).as_quat()
+
+        pose = move_cube.Pose()
+        pose.position = np.array((x, y, z))
+        pose.orientation = orientation
+
+        return pose
+
+    def get_goal(self):
+        x = 0.0
+        y = 0.0
+        #z = move_cube._CUBE_WIDTH / 2
+        z = move_cube.random.uniform(move_cube._min_height,
+                                     move_cube._max_height)
+        #orientation = np.array([0, 0, 0, 1])
+        yaw = move_cube.random.uniform(0, 2 * np.pi)
+        orientation = Rotation.from_euler("z", yaw).as_quat()
+
+        pose = move_cube.Pose()
+        pose.position = np.array((x, y, z))
+        pose.orientation = orientation
+        return pose
 
 
 class FixedInitializer:

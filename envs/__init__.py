@@ -17,6 +17,8 @@ def make_initializer(name, difficulty, init_p=None, max_step=None):
                                                       difficulty)
     elif name == 'random':
         return initializers.RandomInitializer(difficulty)
+    elif name == 'custom_random':
+        return initializers.CustomRandomInitializer(difficulty)
     else:
         assert False, f'wrong initializer: {name}'
 

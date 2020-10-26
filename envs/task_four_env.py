@@ -10,6 +10,7 @@ import trifinger_simulation
 import trifinger_simulation.visual_objects
 from trifinger_simulation import trifingerpro_limits
 from trifinger_simulation.tasks import move_cube
+from scipy.spatial.transform import Rotation
 
 from dm_control.utils import rewards as dmr
 
@@ -130,9 +131,7 @@ class TaskFourEnv(gym.GoalEnv):
             deepcopy(self.object_state_space),
         })
 
-        self.reward_space = gym.spaces.Box(low=0.0,
-                                           high=1.0,
-                                           shape=(2 + num_corners,))
+        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
 
     def compute_reward(self, observation, info):
         cube_radius = move_cube._cube_3d_radius
@@ -151,6 +150,54 @@ class TaskFourEnv(gym.GoalEnv):
                                  bounds=(0, 0.001 * cube_radius),
                                  margin=cube_radius,
                                  sigmoid='long_tail')
+
+        above_ground = dmr.tolerance(
+            object_pos[2],
+            bounds=(target_pos[2] - 0.001 * min_height,
+                    target_pos[2] + 0.001 * min_height),
+            margin=0.999 * min_height,
+            sigmoid='long_tail')
+
+        above_ground = (9 * above_ground + 1) / 10
+
+        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
+        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
+
+        actual_rot = Rotation.from_quat(actual_pose.orientation)
+        goal_rot = Rotation.from_quat(goal_pose.orientation)
+        error_rot = goal_rot.inv() * actual_rot
+        orientation_error = error_rot.magnitude() / np.pi
+
+        orientation = dmr.tolerance(orientation_error,
+                                    bounds=(0.0, 0.01),
+                                    margin=0.99,
+                                    sigmoid='long_tail')
+
+        orientation = (5 * orientation + 1) / 6
+
+        reward = in_place * above_ground * orientation
+        return np.array([reward])
+
+    def compute_reward_old(self, observation, info):
+        cube_radius = move_cube._cube_3d_radius
+        arena_radius = move_cube._ARENA_RADIUS
+        min_height = move_cube._min_height
+        max_height = move_cube._max_height
+
+        robot_id = self.platform.simfinger.finger_id
+        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
+
+        # compute reward to see if the object reached the target
+        object_pos = observation['achieved_goal']['position']
+        target_pos = observation['desired_goal']['position']
+        object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
+        in_place = dmr.tolerance(object_to_target,
+                                 bounds=(0, 0.001 * cube_radius),
+                                 margin=cube_radius,
+                                 sigmoid='long_tail')
+
+        import ipdb
+        ipdb.set_trace()
 
         above_ground = dmr.tolerance(
             object_pos[2],

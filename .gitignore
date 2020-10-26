@@ -3,7 +3,6 @@ __pycache__/
 exp
 exp_local
 rrc_simulation
-trifinger_simulation
 sweep.py
 cancel_sweep.py
 rrc_package
