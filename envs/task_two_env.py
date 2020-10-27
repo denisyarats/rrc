@@ -18,7 +18,7 @@ from envs import ActionType
 from envs.visual_objects import OrientationMarker, CubeMarker
 
 
-class TaskThreeEnv(gym.GoalEnv):
+class TaskTwoEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
     def __init__(
         self,
@@ -44,7 +44,7 @@ class TaskThreeEnv(gym.GoalEnv):
         # Basic initialization
         # ====================
 
-        assert initializer.difficulty == 3
+        assert initializer.difficulty == 2
         self.initializer = initializer
         self.action_type = action_type
         self.episode_length = episode_length * frameskip

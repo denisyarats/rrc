@@ -62,6 +62,11 @@ register(
 )
 
 register(
+    id="task2-v1",
+    entry_point="envs.task_two_env:TaskTwoEnv",
+)
+
+register(
     id="task3-v1",
     entry_point="envs.task_three_env:TaskThreeEnv",
 )
