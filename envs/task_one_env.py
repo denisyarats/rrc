@@ -18,7 +18,7 @@ from envs import ActionType
 from envs.visual_objects import OrientationMarker, CubeMarker
 
 
-class TaskTwoEnv(gym.GoalEnv):
+class TaskOneEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
     def __init__(
         self,
