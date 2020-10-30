@@ -1,12 +1,16 @@
 import argparse
 import pybullet
 import imageio
-from trifinger_simulation import camera
+import cv2
+
+import robot_fingers
 
 import os
 import sys
 import json
 
+from trifinger_cameras.utils import convert_image
+from trifinger_simulation import camera
 from trifinger_simulation.gym_wrapper.envs import cube_env
 from trifinger_simulation.tasks import move_cube
 
@@ -24,11 +28,12 @@ def set_robot(env, pos):
         pybullet.resetJointState(robot_id, j, pos[i])
     return
 
-def render_trajectory(data, difficulty, goal):
+def render_trajectory(data, difficulty, goal, camera_id, 
+                        caption_text=None, frameskip=1):
         
     frames = []
     
-    cameras = camera.TriFingerCameras(image_size=(256, 256))
+    cameras = camera.TriFingerCameras() # image_size=(256, 256)
     
     init = dotdict(data[0]['achieved_goal'])
     init.position[2] = max(0.036, init.position[2])
@@ -41,20 +46,25 @@ def render_trajectory(data, difficulty, goal):
     block_id = env.platform.cube.block
     
     for t in range(len(data)):
-        pos = data[t]['observation']['position']
-        for i,j in enumerate(joint_ids):
-            pybullet.resetJointState(robot_id, j, pos[i])
-            
-        block_pos = data[t]['achieved_goal']['position']
-        block_or = data[t]['achieved_goal']['orientation']
-        pybullet.resetBasePositionAndOrientation(block_id, block_pos, block_or)
-            
-        frames.append(cameras.get_images()[0])
+        if t % frameskip == 0:
+            pos = data[t]['observation']['position']
+            for i,j in enumerate(joint_ids):
+                pybullet.resetJointState(robot_id, j, pos[i])
+                
+            block_pos = data[t]['achieved_goal']['position']
+            block_or = data[t]['achieved_goal']['orientation']
+            pybullet.resetBasePositionAndOrientation(block_id, block_pos, block_or)
+                
+            img = np.float32(cameras.get_images()[camera_id])
+            if caption_text is not None:
+                caption(img, caption_text)
+            frames.append(img)
     
     return frames
 
-def collect_sim_data(policy_path, data, steps, difficulty, goal):
+def collect_sim_data(policy_path, data, difficulty, goal):
     
+    steps = len(data)
     init = dotdict(data[0]['achieved_goal'])
     init.position[2] = max(0.036, init.position[2])
 
@@ -82,8 +92,9 @@ def collect_sim_data(policy_path, data, steps, difficulty, goal):
         
     return sim_data
 
-def collect_open_loop_data(data, steps, difficulty, goal):
+def collect_open_loop_data(data, difficulty, goal):
 
+    steps = len(data)
     init = dotdict(data[0]['achieved_goal'])
     init.position[2] = max(0.036, init.position[2])
 
@@ -336,43 +347,99 @@ def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
     return env
 
 
+def caption(img, text):
+    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    bottomLeftCornerOfText = (10,200)
+    fontScale              = 1
+    fontColor              = (0,0,0)
+    lineType               = 2
+
+    cv2.putText(img, text, 
+        bottomLeftCornerOfText, 
+        font, 
+        fontScale,
+        fontColor,
+        lineType)
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path")
+    parser.add_argument("--camera", default=0, type=int)
     parser.add_argument("--steps", default=1000, type=int)
+    parser.add_argument("--frameskip", default=10, type=int)
+    parser.add_argument("--fps", default=10, type=int)
     args = parser.parse_args()
 
-    with open(args.data_path + '/goal.json') as f:
+    goal_path = os.path.join(args.data_path, 'goal.json')
+    with open(goal_path) as f:
         goal_dict = dotdict(json.load(f))
-
-    data = torch.load(args.data_path + '/data.pt')
     difficulty = goal_dict.difficulty
     goal = dotdict(goal_dict.goal)
     goal.position = np.array(goal.position)
     goal.orientation = np.array(goal.orientation)
+
+    #data = torch.load(args.data_path + '/data.pt')
+
+    print('loading data')
+    robot_data_file = os.path.join(args.data_path, 'robot_data.dat')
+    camera_data_file = os.path.join(args.data_path, 'camera_data.dat')
+    log = robot_fingers.TriFingerPlatformLog(robot_data_file, camera_data_file)
+
+    data = []
+    camera_frames = []
+
+    for t in range(log.get_first_timeindex(), log.get_first_timeindex() + args.steps):
+        robot_observation = log.get_robot_observation(t)
+        camera_observation = log.get_camera_observation(t)
+        desired_action = log.get_desired_action(t)
+        applied_action = log.get_desired_action(t)
+
+        observation = {
+            'observation': {
+                'position': robot_observation.position,
+                'velocity': robot_observation.velocity,
+                'torque': robot_observation.torque,
+            },
+            'desired_action': desired_action.position,
+            'applied_accion': applied_action.position,
+            'achieved_goal': {
+                'position': camera_observation.object_pose.position,
+                'orientation': camera_observation.object_pose.orientation,
+            },
+        }
+        data.append(observation)
+        if t % args.frameskip == 0:
+            camera_frames.append(convert_image(
+                            camera_observation.cameras[args.camera].image))
+    
+    data_save_path = os.path.join(args.data_path, 'data.pt')
+    torch.save(data, data_save_path)
+    data = torch.load(data_save_path)
     
     print('making replay')
-    replay_frames = render_trajectory(data[:args.steps], difficulty, goal)
-    #imageio.mimwrite(args.data_path+ '/replay.mp4', frames, fps=100)
+    replay_frames = render_trajectory(data, difficulty, goal, args.camera, 
+                                        'replay', args.frameskip)
 
     print('making open loop')
-    open_loop_data = collect_open_loop_data(data, args.steps, difficulty, goal)
-    open_frames = render_trajectory(open_loop_data, difficulty, goal)
-    #imageio.mimwrite(args.data_path + '/open_loop.mp4', open_frames, fps=100)
+    open_loop_data = collect_open_loop_data(data, difficulty, goal)
+    open_frames = render_trajectory(open_loop_data, difficulty, goal, args.camera, 
+                                        'open loop', args.frameskip)
 
     print('making policy')
-    sim_data = collect_sim_data(args.data_path + '/policy.pt', data, args.steps, difficulty, goal)
-    sim_frames = render_trajectory(sim_data, difficulty, goal)
+    sim_data = collect_sim_data(args.data_path + '/policy.pt', data, difficulty, goal)
+    sim_frames = render_trajectory(sim_data, difficulty, goal, args.camera, 
+                                        'policy', args.frameskip)
 
     stacked_frames = []
-    for t in range(args.steps):
-        frame = np.concatenate([replay_frames[t], open_frames[t], sim_frames[t]])
+    for t in range(args.steps // args.frameskip):
+        top = np.concatenate([camera_frames[t], replay_frames[t]])
+        bottom = np.concatenate([open_frames[t], sim_frames[t]])
+        frame = np.concatenate([top, bottom], axis=1)
         stacked_frames.append(frame)
     print('rendering')
-    imageio.mimwrite(args.data_path + '/sim.mp4', stacked_frames, fps=100)
+    imageio.mimwrite(args.data_path + '/sim.mp4', stacked_frames, fps=args.fps)
 
     
 
