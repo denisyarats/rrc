@@ -5,6 +5,7 @@ from trifinger_simulation import camera
 
 import os
 import sys
+import json
 
 from trifinger_simulation.gym_wrapper.envs import cube_env
 from trifinger_simulation.tasks import move_cube
@@ -27,10 +28,10 @@ def render_trajectory(data, difficulty, goal):
         
     frames = []
     
-    cameras = camera.TriFingerCameras()
+    cameras = camera.TriFingerCameras(image_size=(256, 256))
     
     init = dotdict(data[0]['achieved_goal'])
-    init.position[2] = max(0.035, init.position[2])
+    init.position[2] = max(0.036, init.position[2])
     env = make_env(difficulty, init, goal, obs_wrappers=False)
     env.reset()
     
@@ -55,7 +56,7 @@ def render_trajectory(data, difficulty, goal):
 def collect_sim_data(policy_path, data, steps, difficulty, goal):
     
     init = dotdict(data[0]['achieved_goal'])
-    init.position[2] = max(0.035, init.position[2])
+    init.position[2] = max(0.036, init.position[2])
 
     pol_env = make_env(difficulty, init, goal)
     env = make_env(difficulty, init, goal, obs_wrappers=False)
@@ -84,7 +85,7 @@ def collect_sim_data(policy_path, data, steps, difficulty, goal):
 def collect_open_loop_data(data, steps, difficulty, goal):
 
     init = dotdict(data[0]['achieved_goal'])
-    init.position[2] = max(0.035, init.position[2])
+    init.position[2] = max(0.036, init.position[2])
 
     env = make_env(difficulty, init, goal, obs_wrappers=False, act_wrappers=False)
     
@@ -111,14 +112,6 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 
-
-def make_dir(*path_parts):
-    dir_path = os.path.join(*path_parts)
-    try:
-        os.mkdir(dir_path)
-    except OSError:
-        pass
-    return dir_path
 
 
 def mlp(input_dim,
@@ -314,7 +307,7 @@ def make_policy(env, path):
         float(env.action_space.high.max())
     ]
     
-    excluded_obses = 'action' #'desired_goal_orientation:achieved_goal_orientation'
+    excluded_obses = 'action' #:desired_goal_orientation:achieved_goal_orientation'
 
     policy = Policy(obs_shape=env.observation_space.shape,
                     obs_slices=env.obs_slices,
@@ -335,7 +328,7 @@ def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
 
     #env = wrappers.CubeMarkerWrapper(env)
     if obs_wrappers:
-        env = QuaternionToCornersWrapper(env, 2)
+        env = QuaternionToCornersWrapper(env, 1)
         env = FlattenObservationWrapper(env)
     if act_wrappers:
         env = ActionScalingWrapper(env, low=-1.0, high=+1.0)
@@ -348,27 +341,40 @@ def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--save_dir")
-    parser.add_argument("--policy_path")
     parser.add_argument("--data_path")
-    parser.add_argument("--difficulty", default=1, type=int)
     parser.add_argument("--steps", default=1000, type=int)
     args = parser.parse_args()
 
-    data = torch.load(args.data_path)
-    goal = dotdict({"position": np.array([0.00, 0.00, 0.0325]),
-             "orientation": np.array([0.0, 0.0, 0.70710678, 0.70710678])})
+    with open(args.data_path + '/goal.json') as f:
+        goal_dict = dotdict(json.load(f))
+
+    data = torch.load(args.data_path + '/data.pt')
+    difficulty = goal_dict.difficulty
+    goal = dotdict(goal_dict.goal)
+    goal.position = np.array(goal.position)
+    goal.orientation = np.array(goal.orientation)
     
-    frames = render_trajectory(data[:args.steps], args.difficulty, goal)
-    imageio.mimwrite(args.save_dir + '/replay.mp4', frames, fps=100)
+    print('making replay')
+    replay_frames = render_trajectory(data[:args.steps], difficulty, goal)
+    #imageio.mimwrite(args.data_path+ '/replay.mp4', frames, fps=100)
 
-    sim_data = collect_sim_data(args.policy_path, data, args.steps, args.difficulty, goal)
-    sim_frames = render_trajectory(sim_data, args.difficulty, goal)
-    imageio.mimwrite(args.save_dir + '/policy.mp4', sim_frames, fps=100)
+    print('making open loop')
+    open_loop_data = collect_open_loop_data(data, args.steps, difficulty, goal)
+    open_frames = render_trajectory(open_loop_data, difficulty, goal)
+    #imageio.mimwrite(args.data_path + '/open_loop.mp4', open_frames, fps=100)
 
-    open_loop_data = collect_open_loop_data(data, args.steps, args.difficulty, goal)
-    open_frames = render_trajectory(open_loop_data, args.difficulty, goal)
-    imageio.mimwrite(args.save_dir + '/open_loop.mp4', open_frames, fps=100)
+    print('making policy')
+    sim_data = collect_sim_data(args.data_path + '/policy.pt', data, args.steps, difficulty, goal)
+    sim_frames = render_trajectory(sim_data, difficulty, goal)
+
+    stacked_frames = []
+    for t in range(args.steps):
+        frame = np.concatenate([replay_frames[t], open_frames[t], sim_frames[t]])
+        stacked_frames.append(frame)
+    print('rendering')
+    imageio.mimwrite(args.data_path + '/sim.mp4', stacked_frames, fps=100)
+
+    
 
 
 
