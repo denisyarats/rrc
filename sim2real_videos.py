@@ -62,7 +62,7 @@ def render_trajectory(data, difficulty, goal, camera_id,
     
     return frames
 
-def collect_sim_data(policy_path, data, difficulty, goal):
+def collect_sim_data(policy_path, data, difficulty, goal, n_policies):
     
     steps = len(data)
     init = dotdict(data[0]['achieved_goal'])
@@ -71,7 +71,7 @@ def collect_sim_data(policy_path, data, difficulty, goal):
     pol_env = make_env(difficulty, init, goal)
     env = make_env(difficulty, init, goal, obs_wrappers=False)
     
-    policy = make_policy(pol_env, policy_path)
+    policy = make_policy(pol_env, policy_path, n_policies)
     
     pol_obs = pol_env.reset()
     obs = env.reset()
@@ -307,8 +307,9 @@ class Policy:
             return action
 
 
-def make_policy(env, path):
-    snapshots = [path]
+def make_policy(env, path, n_policies):
+    #snapshots = [path]
+    snapshots = [path + f'/policy_{i}.pt' for i in range(n_policies)]
     print(f'workingdir: {os.getcwd()}')
     # for subdir, dirs, files in os.walk('.'):
     #     for file in files:
@@ -370,6 +371,7 @@ if __name__ == "__main__":
     parser.add_argument("--steps", default=1000, type=int)
     parser.add_argument("--frameskip", default=10, type=int)
     parser.add_argument("--fps", default=10, type=int)
+    parser.add_argument("--n_policies", default=1, type=int)
     args = parser.parse_args()
 
     goal_path = os.path.join(args.data_path, 'goal.json')
@@ -428,7 +430,7 @@ if __name__ == "__main__":
                                         'open loop', args.frameskip)
 
     print('making policy')
-    sim_data = collect_sim_data(args.data_path + '/policy.pt', data, difficulty, goal)
+    sim_data = collect_sim_data(args.data_path, data, difficulty, goal, args.n_policies)
     sim_frames = render_trajectory(sim_data, difficulty, goal, args.camera, 
                                         'policy', args.frameskip)
 
