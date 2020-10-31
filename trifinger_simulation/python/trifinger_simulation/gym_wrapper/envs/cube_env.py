@@ -262,7 +262,7 @@ class CubeEnv(gym.GoalEnv):
         goal_object_pose = self.initializer.get_goal()
 
         self.platform = TriFingerPlatform(
-            visualization=self.visualization,
+            visualization=False,
             initial_robot_position=initial_robot_position,
             initial_object_pose=initial_object_pose,
         )
