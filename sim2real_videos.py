@@ -10,9 +10,9 @@ import sys
 import json
 
 from trifinger_cameras.utils import convert_image
-from trifinger_simulation import camera
-from trifinger_simulation.gym_wrapper.envs import cube_env
-from trifinger_simulation.tasks import move_cube
+from trifinger_simulation_v2 import camera
+from trifinger_simulation_v2.gym_wrapper.envs import cube_env
+from trifinger_simulation_v2.tasks import move_cube
 
 import torch
 import torch.nn as nn
@@ -335,7 +335,7 @@ def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
     
     initializer = cube_env.FixedInitializer(difficulty, init, goal)
     env = cube_env.CubeEnv(
-        initializer, cube_env.ActionType.POSITION, frameskip=1
+        initializer, cube_env.ActionType.POSITION, frameskip=1, visualization=True
     )
 
     #env = wrappers.CubeMarkerWrapper(env)
@@ -372,6 +372,7 @@ if __name__ == "__main__":
     parser.add_argument("--frameskip", default=10, type=int)
     parser.add_argument("--fps", default=10, type=int)
     parser.add_argument("--n_policies", default=1, type=int)
+    #parser.add_argument("--visualization", default=False)
     args = parser.parse_args()
 
     goal_path = os.path.join(args.data_path, 'goal.json')

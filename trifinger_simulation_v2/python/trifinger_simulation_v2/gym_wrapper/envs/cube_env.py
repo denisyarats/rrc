@@ -3,9 +3,9 @@ import enum
 
 import gym
 
-from trifinger_simulation import TriFingerPlatform
-from trifinger_simulation import visual_objects
-from trifinger_simulation.tasks import move_cube
+from trifinger_simulation_v2 import TriFingerPlatform
+from trifinger_simulation_v2 import visual_objects
+from trifinger_simulation_v2.tasks import move_cube
 
 
 class RandomInitializer:

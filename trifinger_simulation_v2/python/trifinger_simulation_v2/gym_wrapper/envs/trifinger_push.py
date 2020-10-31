@@ -3,11 +3,11 @@ import time
 
 import gym
 
-from trifinger_simulation.sim_finger import SimFinger
-from trifinger_simulation.gym_wrapper.data_logger import DataLogger
-from trifinger_simulation.gym_wrapper.finger_spaces import FingerSpaces
-from trifinger_simulation.gym_wrapper import utils
-from trifinger_simulation import (
+from trifinger_simulation_v2.sim_finger import SimFinger
+from trifinger_simulation_v2.gym_wrapper.data_logger import DataLogger
+from trifinger_simulation_v2.gym_wrapper.finger_spaces import FingerSpaces
+from trifinger_simulation_v2.gym_wrapper import utils
+from trifinger_simulation_v2 import (
     finger_types_data,
     collision_objects,
     visual_objects,

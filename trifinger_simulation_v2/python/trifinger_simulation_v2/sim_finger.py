@@ -6,11 +6,11 @@ import warnings
 import pybullet
 import pybullet_data
 
-from trifinger_simulation.action import Action
-from trifinger_simulation.observation import Observation
-from trifinger_simulation import collision_objects
-from trifinger_simulation import pinocchio_utils
-from trifinger_simulation import finger_types_data
+from trifinger_simulation_v2.action import Action
+from trifinger_simulation_v2.observation import Observation
+from trifinger_simulation_v2 import collision_objects
+from trifinger_simulation_v2 import pinocchio_utils
+from trifinger_simulation_v2 import finger_types_data
 
 
 class SimFinger:
@@ -60,7 +60,7 @@ class SimFinger:
         #: on the simulation step size and has been set for a simulation rate
         #: of 250 Hz.
         self.position_gains = np.array(
-            [10.0, 10.0, 10.0] * self.number_of_fingers
+           [5.0, 5.0, 5.0] * self.number_of_fingers #[10.0, 10.0, 10.0] * self.number_of_fingers
         )
 
         #: The kd gains for the pd control of the finger(s). Note, this depends
@@ -592,7 +592,7 @@ class SimFinger:
                 lateralFriction=0.1,
                 spinningFriction=0.1,
                 rollingFriction=0.1,
-                linearDamping=0.5,
+                linearDamping=0.5, 
                 angularDamping=0.5,
                 contactStiffness=0.1,
                 contactDamping=0.05,
