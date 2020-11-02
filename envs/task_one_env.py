@@ -122,7 +122,7 @@ class TaskOneEnv(gym.GoalEnv):
                 "position": robot_position_space,
                 "velocity": robot_velocity_space,
                 "torque": robot_torque_space,
-                #"tip_force":  gym.spaces.Box(low=np.zeros(3, dtype=np.float32), high=np.ones(3, dtype=np.float32))
+                #"tip_force": gym.spaces.Box(low=np.zeros(3, dtype=np.float32), high=np.ones(3, dtype=np.float32))
             }),
             "action":
             deepcopy(self.action_space),
@@ -151,80 +151,26 @@ class TaskOneEnv(gym.GoalEnv):
                                  bounds=(0, 0.001 * cube_radius),
                                  margin=cube_radius,
                                  sigmoid='long_tail')
-
-        above_ground = dmr.tolerance(
-            object_pos[2],
-            bounds=(target_pos[2] - 0.001 * min_height,
-                    target_pos[2] + 0.001 * min_height),
-            margin=0.999 * min_height,
-            sigmoid='long_tail')
-
-        above_ground = (5 * above_ground + 1) / 6
-
-        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
-        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
-
-        actual_rot = Rotation.from_quat(actual_pose.orientation)
-        goal_rot = Rotation.from_quat(goal_pose.orientation)
-        error_rot = goal_rot.inv() * actual_rot
-        orientation_error = error_rot.magnitude() / np.pi
-
-        orientation = dmr.tolerance(orientation_error,
-                                    bounds=(0.0, 0.01),
-                                    margin=0.99,
-                                    sigmoid='long_tail')
-
-        orientation = (5 * orientation + 1) / 6
-
-        reward = in_place * above_ground
+        
+        velocity = np.linalg.norm(observation['observation']['velocity'])
+        control = dmr.tolerance(velocity, margin=1, value_at_margin=0, sigmoid='quadratic')
+        small_control = (control + 4) / 5
+        
+        grasp = 0
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+            finger_to_object = np.linalg.norm(finger_pos - object_pos)
+            grasp = max(
+                grasp,
+                dmr.tolerance(finger_to_object,
+                                  bounds=(0, 0.5 * cube_radius),
+                                  margin=arena_radius,
+                                  sigmoid='long_tail'))
+            
+        grasp = (3 * grasp + 3) / 6
+        
+        reward = in_place * small_control * grasp
         return np.array([reward])
-
-    def compute_reward_old(self, observation, info):
-        cube_radius = move_cube._cube_3d_radius
-        arena_radius = move_cube._ARENA_RADIUS
-        min_height = move_cube._min_height
-        max_height = move_cube._max_height
-
-        robot_id = self.platform.simfinger.finger_id
-        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
-
-        # compute reward to see if the object reached the target
-        object_pos = observation['achieved_goal']['position']
-        target_pos = observation['desired_goal']['position']
-        object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
-        in_place = dmr.tolerance(object_to_target,
-                                 bounds=(0, 0.001 * cube_radius),
-                                 margin=cube_radius,
-                                 sigmoid='long_tail')
-
-        import ipdb
-        ipdb.set_trace()
-
-        above_ground = dmr.tolerance(
-            object_pos[2],
-            bounds=(target_pos[2] - 0.001 * min_height,
-                    target_pos[2] + 0.001 * min_height),
-            margin=0.999 * min_height,
-            sigmoid='long_tail')
-
-        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
-        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
-
-        actual_corners = move_cube.get_cube_corner_positions(actual_pose)
-        goal_corners = move_cube.get_cube_corner_positions(goal_pose)
-
-        orientation_errors = np.linalg.norm(goal_corners - actual_corners,
-                                            axis=1)[:self.num_corners]
-
-        rewards = [above_ground, in_place]
-        for e in orientation_errors:
-            r = dmr.tolerance(e,
-                              bounds=(0, 0.001 * cube_radius),
-                              margin=arena_radius,
-                              sigmoid='long_tail')
-            rewards.append(r)
-
-        return np.array(rewards)
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.

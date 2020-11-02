@@ -173,10 +173,14 @@ class TaskTwoEnv(gym.GoalEnv):
                                     bounds=(0.0, 0.01),
                                     margin=0.99,
                                     sigmoid='long_tail')
+        
+        velocity = np.linalg.norm(observation['observation']['velocity'])
+        control = dmr.tolerance(velocity, margin=1, value_at_margin=0, sigmoid='quadratic')
+        small_control = (control + 4) / 5
 
         orientation = (5 * orientation + 1) / 6
 
-        reward = in_place * above_ground
+        reward = in_place * above_ground * small_control
         return np.array([reward])
 
     def compute_reward_old(self, observation, info):

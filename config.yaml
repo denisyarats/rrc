@@ -1,21 +1,21 @@
 # env
-difficulty: 4
+difficulty: 1
 env: task${difficulty}
-action_type: position # torque or both
+action_type: torque # torque or both
 action_repeat: 1
 episode_length: 500
-num_corners: 2
+num_corners: 1
 excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false
-teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.10.22/212726_ddpg_task4_no_teacher_num_corners_rnd_ori/11/model
-teacher_model_step: 10000000
+teacher_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/phase1
+teacher_model_step: 0
 teacher_init_p: 1.0
-teacher_max_step: 1000000
+teacher_max_step: 3000000
 teacher_excluded_obses: action
 # denis curriculum
-train_initializer: custom_random
-eval_initializer: custom_random
+train_initializer: random
+eval_initializer: random
 curriculum_max_step: 1000000
 curriculum_init_p: 0.0
 # train
@@ -31,7 +31,7 @@ num_eval_episodes: 10
 log_frequency_step: 10000
 log_save_tb: true
 save_video: true
-video_fps: 50
+video_fps: 10
 device: cuda
 # saving
 save_frequency: 10000
