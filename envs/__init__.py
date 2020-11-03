@@ -2,7 +2,7 @@ import numpy as np
 import gym
 
 from envs import initializers, wrappers
-from trifinger_simulation.gym_wrapper.envs import cube_env
+from trifinger_simulation_v2.gym_wrapper.envs import cube_env
 
 ActionType = cube_env.ActionType
 
