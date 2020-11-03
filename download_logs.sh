@@ -67,5 +67,5 @@ else
 fi
 
 echo "Copy goal and policy"
-cp rrc_package/goal.json ${base_url}/${job_id}
-cp rrc_package/scripts/policy_0.pt ${base_url}/${job_id}/
+cp rrc_package/goal.json ${job_dir}/
+cp rrc_package/scripts/policy_0.pt ${job_dir}/
