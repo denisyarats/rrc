@@ -28,6 +28,7 @@ def make(env_name,
          action_repeat,
          episode_length,
          num_corners,
+         control_margin,
          initializer,
          seed,
          randomized=False,
@@ -46,7 +47,8 @@ def make(env_name,
                    action_type=action_type,
                    frameskip=action_repeat,
                    episode_length=episode_length,
-                   num_corners=num_corners)
+                   num_corners=num_corners,
+                   control_margin=control_margin)
 
     env.seed(seed)
 

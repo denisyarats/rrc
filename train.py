@@ -56,6 +56,7 @@ class Workspace(object):
                              cfg.action_repeat,
                              cfg.episode_length,
                              cfg.num_corners,
+                             cfg.control_margin,
                              self.train_initializer,
                              cfg.seed,
                              randomized=True,
@@ -65,6 +66,7 @@ class Workspace(object):
                                   cfg.action_repeat,
                                   cfg.episode_length,
                                   cfg.num_corners,
+                                  cfg.control_margin,
                                   self.eval_initializer,
                                   cfg.seed + 1,
                                   randomized=False)

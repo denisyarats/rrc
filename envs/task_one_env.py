@@ -20,14 +20,13 @@ from envs.visual_objects import OrientationMarker, CubeMarker
 
 class TaskOneEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
-    def __init__(
-        self,
-        initializer,
-        action_type=ActionType.TORQUE,
-        frameskip=1,
-        episode_length=move_cube.episode_length,
-        num_corners=0,
-    ):
+    def __init__(self,
+                 initializer,
+                 action_type=ActionType.TORQUE,
+                 frameskip=1,
+                 episode_length=move_cube.episode_length,
+                 num_corners=0,
+                 control_margin=0.01):
         """Initialize.
 
         Args:
@@ -50,6 +49,7 @@ class TaskOneEnv(gym.GoalEnv):
         self.episode_length = episode_length * frameskip
         assert self.episode_length <= move_cube.episode_length
         self.num_corners = num_corners
+        self.control_margin = control_margin
 
         self.info = {"difficulty": self.initializer.difficulty}
 
@@ -154,7 +154,31 @@ class TaskOneEnv(gym.GoalEnv):
                                  margin=cube_radius,
                                  sigmoid='long_tail')
 
-        return np.array([in_place])
+        fingers_pos = []
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+            fingers_pos.append(finger_pos)
+        fingers_pos = np.array(fingers_pos)
+
+        min_z = fingers_pos[:, 2].min()
+
+        above_ground = dmr.tolerance(min_z, bounds=(0.3 * min_height, np.inf))
+
+        reward = in_place * above_ground
+        #import ipdb; ipdb.set_trace()
+        if self.last_fingers_pos is not None:
+            diff = np.linalg.norm(fingers_pos - self.last_fingers_pos,
+                                  axis=1).mean()
+            control = dmr.tolerance(diff,
+                                    margin=self.control_margin * cube_radius,
+                                    value_at_margin=0,
+                                    sigmoid='linear')
+            small_control = (control + 2.0) / 3.0
+            reward *= small_control
+
+        self.last_fingers_pos = fingers_pos
+
+        return np.array([reward])
 
         velocity = np.linalg.norm(observation['observation']['velocity'])
         control = dmr.tolerance(velocity,
@@ -162,6 +186,9 @@ class TaskOneEnv(gym.GoalEnv):
                                 value_at_margin=0,
                                 sigmoid='quadratic')
         small_control = (control + 4) / 5
+
+        import ipdb
+        ipdb.set_trace()
 
         grasp = 0
         for finger_id in finger_ids:
@@ -175,6 +202,8 @@ class TaskOneEnv(gym.GoalEnv):
                               sigmoid='long_tail'))
 
         grasp = (3 * grasp + 3) / 6
+
+        return np.array([in_place])
 
         reward = in_place * small_control * grasp
         return np.array([reward])
@@ -251,6 +280,7 @@ class TaskOneEnv(gym.GoalEnv):
         self._reset_direct_simulation(**kwargs)
 
         self.step_count = 0
+        self.last_fingers_pos = None
 
         # need to already do one step to get initial observation
         # TODO disable frameskip here?
