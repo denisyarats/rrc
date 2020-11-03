@@ -54,3 +54,29 @@ class VideoRecorder(object):
         if self.enabled:
             path = os.path.join(self.save_dir, file_name)
             imageio.mimsave(path, self.frames)
+
+
+class TrainVideoRecorder(object):
+    def __init__(self, root_dir, height=256, width=256, fps=50):
+        self.save_dir = utils.make_dir(root_dir, 'train_video') if root_dir else None
+        self.camera = CustomTriFingerCameras(height, width)
+        self.fps = fps
+        self.frames = []
+        self.count = 0
+
+    def init(self, enabled=True):
+        self.frames = []
+        self.count = 0
+        self.enabled = self.save_dir is not None and enabled
+
+    def record(self):
+        if self.enabled and self.count % self.fps == 0:
+            images = self.camera.get_images()
+            frame = np.concatenate(images, axis=1)
+            self.frames.append(frame)
+        self.count += 1
+
+    def save(self, file_name):
+        if self.enabled:
+            path = os.path.join(self.save_dir, file_name)
+            imageio.mimsave(path, self.frames)

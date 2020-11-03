@@ -16,7 +16,7 @@ import torch
 import utils
 from logger import Logger
 from replay_buffer import ReplayBuffer
-from video import VideoRecorder
+from video import VideoRecorder, TrainVideoRecorder
 from collections import defaultdict
 
 from rrc_simulation.tasks import move_cube
@@ -59,17 +59,8 @@ class Workspace(object):
                              cfg.control_margin,
                              self.train_initializer,
                              cfg.seed,
-                             randomized=True,
+                             randomize=True,
                              obj_position_noise_std=cfg.obj_position_noise_std)
-        self.eval_env = envs.make(cfg.env,
-                                  cfg.action_type,
-                                  cfg.action_repeat,
-                                  cfg.episode_length,
-                                  cfg.num_corners,
-                                  cfg.control_margin,
-                                  self.eval_initializer,
-                                  cfg.seed + 1,
-                                  randomized=False)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -97,15 +88,17 @@ class Workspace(object):
 
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None, fps=cfg.video_fps)
+        self.train_video_recorder = TrainVideoRecorder(
+            self.work_dir if cfg.save_train_video else None, fps=cfg.video_fps)
 
         self.step = 0
 
-    def evaluate(self, env, agent):
+    def evaluate(self, agent):
         average_episode_reward = np.zeros(self.env.reward_space.shape)
         average_episode_length = 0
         denominator = self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
-            obs = env.reset()
+            obs = self.env.reset()
             self.video_recorder.init(enabled=(episode == 0))
             done = False
             episode_reward = np.zeros(self.env.reward_space.shape)
@@ -114,7 +107,7 @@ class Workspace(object):
             while not done:
                 with utils.eval_mode(agent):
                     action = agent.act(obs, sample=False)
-                obs, reward, done, info = env.step(action)
+                obs, reward, done, info = self.env.step(action)
                 self.video_recorder.record()
                 episode_reward += reward
                 episode_step += 1
@@ -141,9 +134,6 @@ class Workspace(object):
         assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
         while self.step <= self.cfg.num_train_steps:
             # evaluate agent periodically
-            if self.step % self.cfg.eval_frequency == 0:
-                self.logger.log('eval/episode', episode, self.step)
-                self.evaluate(self.eval_env, self.agent)
 
             if self.step % (self.cfg.save_frequency) == 0:
                 self.agent.save(self.model_dir, self.step)
@@ -153,10 +143,8 @@ class Workspace(object):
                     fps = episode_step / (time.time() - start_time)
                     self.logger.log('train/fps', fps, self.step)
                     start_time = time.time()
-                    self.logger.dump(
-                        self.step,
-                        save=(self.step > self.cfg.num_seed_steps),
-                        ty='train')
+
+                    self.train_video_recorder.save(f'{self.step}.mp4')
 
                     for i in range(episode_reward.shape[0]):
                         self.logger.log(
@@ -167,6 +155,15 @@ class Workspace(object):
                         f'train/episode_reward',
                         episode_reward[-1] / self.cfg.episode_length,
                         self.step)
+
+                    self.logger.dump(
+                        self.step,
+                        save=(self.step > self.cfg.num_seed_steps),
+                        ty='train')
+
+                    if self.step % self.cfg.eval_frequency == 0:
+                        self.logger.log('eval/episode', episode, self.step)
+                        self.evaluate(self.agent)
 
                 ratio = max(self.cfg.teacher_max_step - self.step,
                             0) / self.cfg.teacher_max_step
@@ -179,6 +176,7 @@ class Workspace(object):
 
                 self.train_initializer.update(self.step)
                 obs = self.env.reset()
+                self.train_video_recorder.init(enabled=True)
                 done = False
                 episode_reward = np.zeros(self.env.reward_space.shape)
                 episode_step = 0
@@ -206,6 +204,7 @@ class Workspace(object):
                                       self.step)
 
             next_obs, reward, done, info = self.env.step(action)
+            self.train_video_recorder.record()
             episode_reward += reward
 
             self.replay_buffer.add(obs, action, reward, next_obs, done)
