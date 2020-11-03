@@ -23,8 +23,15 @@ def make_initializer(name, difficulty, init_p=None, max_step=None):
         assert False, f'wrong initializer: {name}'
 
 
-def make(env_name, action_type, action_repeat, episode_length, num_corners,
-         initializer, seed):
+def make(env_name,
+         action_type,
+         action_repeat,
+         episode_length,
+         num_corners,
+         initializer,
+         seed,
+         randomized=False,
+         obj_position_noise_std=0.1):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -42,6 +49,11 @@ def make(env_name, action_type, action_repeat, episode_length, num_corners,
                    num_corners=num_corners)
 
     env.seed(seed)
+
+    if randomized:
+        env = wrappers.RandomizedTimeStepWrapper(env)
+        env = wrappers.RandomizedObjectPositionWrapper(env,
+                                                       obj_position_noise_std)
 
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)

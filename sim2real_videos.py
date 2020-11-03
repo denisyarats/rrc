@@ -11,8 +11,10 @@ import json
 
 from trifinger_cameras.utils import convert_image
 from trifinger_simulation_v2 import camera
-from trifinger_simulation_v2.gym_wrapper.envs import cube_env
+#from trifinger_simulation_v2.gym_wrapper.envs import cube_env
+from envs import task_one_env
 from trifinger_simulation_v2.tasks import move_cube
+from envs import initializers, wrappers, ActionType
 
 import torch
 import torch.nn as nn
@@ -36,7 +38,7 @@ def render_trajectory(data, difficulty, goal, camera_id,
     cameras = camera.TriFingerCameras() # image_size=(256, 256)
     
     init = dotdict(data[0]['achieved_goal'])
-    init.position[2] = max(0.036, init.position[2])
+    init.position[2] = max(0.037, init.position[2])
     env = make_env(difficulty, init, goal, obs_wrappers=False)
     env.reset()
     
@@ -66,7 +68,7 @@ def collect_sim_data(policy_path, data, difficulty, goal, n_policies):
     
     steps = len(data)
     init = dotdict(data[0]['achieved_goal'])
-    init.position[2] = max(0.036, init.position[2])
+    init.position[2] = max(0.037, init.position[2])
 
     pol_env = make_env(difficulty, init, goal)
     env = make_env(difficulty, init, goal, obs_wrappers=False)
@@ -96,7 +98,7 @@ def collect_open_loop_data(data, difficulty, goal):
 
     steps = len(data)
     init = dotdict(data[0]['achieved_goal'])
-    init.position[2] = max(0.036, init.position[2])
+    init.position[2] = max(0.037, init.position[2])
 
     env = make_env(difficulty, init, goal, obs_wrappers=False, act_wrappers=False)
     
@@ -319,7 +321,7 @@ def make_policy(env, path, n_policies):
         float(env.action_space.high.max())
     ]
     
-    excluded_obses = 'action' #:desired_goal_orientation:achieved_goal_orientation'
+    excluded_obses = None #:desired_goal_orientation:achieved_goal_orientation'
 
     policy = Policy(obs_shape=env.observation_space.shape,
                     obs_slices=env.obs_slices,
@@ -333,10 +335,8 @@ def make_policy(env, path, n_policies):
 
 def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
     
-    initializer = cube_env.FixedInitializer(difficulty, init, goal)
-    env = cube_env.CubeEnv(
-        initializer, cube_env.ActionType.POSITION, frameskip=1, visualization=True
-    )
+    initializer = initializers.FixedInitializer(difficulty, init, goal)
+    env = task_one_env.TaskOneEnv(initializer, ActionType.POSITION, frameskip=1, episode_length=5000)
 
     #env = wrappers.CubeMarkerWrapper(env)
     if obs_wrappers:
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     parser.add_argument("--camera", default=0, type=int)
     parser.add_argument("--steps", default=1000, type=int)
     parser.add_argument("--frameskip", default=10, type=int)
-    parser.add_argument("--fps", default=10, type=int)
+    parser.add_argument("--fps", default=1, type=int)
     parser.add_argument("--n_policies", default=1, type=int)
     #parser.add_argument("--visualization", default=False)
     args = parser.parse_args()
@@ -405,8 +405,8 @@ if __name__ == "__main__":
                 'velocity': robot_observation.velocity,
                 'torque': robot_observation.torque,
             },
-            'desired_action': desired_action.position,
-            'applied_accion': applied_action.position,
+            'desired_action': desired_action.torque,
+            'applied_accion': applied_action.torque,
             'achieved_goal': {
                 'position': camera_observation.object_pose.position,
                 'orientation': camera_observation.object_pose.orientation,

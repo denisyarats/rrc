@@ -51,12 +51,23 @@ class Workspace(object):
                                                       cfg.curriculum_max_step)
 
         # make envs
-        self.env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                             cfg.episode_length, cfg.num_corners,
-                             self.train_initializer, cfg.seed)
-        self.eval_env = envs.make(cfg.env, cfg.action_type, cfg.action_repeat,
-                                  cfg.episode_length, cfg.num_corners,
-                                  self.eval_initializer, cfg.seed + 1)
+        self.env = envs.make(cfg.env,
+                             cfg.action_type,
+                             cfg.action_repeat,
+                             cfg.episode_length,
+                             cfg.num_corners,
+                             self.train_initializer,
+                             cfg.seed,
+                             randomized=True,
+                             obj_position_noise_std=cfg.obj_position_noise_std)
+        self.eval_env = envs.make(cfg.env,
+                                  cfg.action_type,
+                                  cfg.action_repeat,
+                                  cfg.episode_length,
+                                  cfg.num_corners,
+                                  self.eval_initializer,
+                                  cfg.seed + 1,
+                                  randomized=False)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
@@ -115,8 +126,8 @@ class Workspace(object):
         for i in range(average_episode_reward.shape[0]):
             self.logger.log(f'eval/episode_reward_{i}',
                             average_episode_reward[i], self.step)
-        self.logger.log(f'eval/episode_reward', np.mean(average_episode_reward),
-                        self.step)
+        self.logger.log(f'eval/episode_reward',
+                        np.mean(average_episode_reward), self.step)
         self.logger.log('eval/episode_length', average_episode_length,
                         self.step)
         self.logger.dump(self.step, ty='eval')

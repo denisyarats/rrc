@@ -64,6 +64,8 @@ class TaskOneEnv(gym.GoalEnv):
         # will be initialized in reset()
         self.platform = None
 
+        self.time_step_s = 0.004
+
         # Create the action and observation spaces
         # ========================================
 
@@ -151,11 +153,16 @@ class TaskOneEnv(gym.GoalEnv):
                                  bounds=(0, 0.001 * cube_radius),
                                  margin=cube_radius,
                                  sigmoid='long_tail')
-        
+
+        return np.array([in_place])
+
         velocity = np.linalg.norm(observation['observation']['velocity'])
-        control = dmr.tolerance(velocity, margin=1, value_at_margin=0, sigmoid='quadratic')
+        control = dmr.tolerance(velocity,
+                                margin=1,
+                                value_at_margin=0,
+                                sigmoid='quadratic')
         small_control = (control + 4) / 5
-        
+
         grasp = 0
         for finger_id in finger_ids:
             finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
@@ -163,12 +170,12 @@ class TaskOneEnv(gym.GoalEnv):
             grasp = max(
                 grasp,
                 dmr.tolerance(finger_to_object,
-                                  bounds=(0, 0.5 * cube_radius),
-                                  margin=arena_radius,
-                                  sigmoid='long_tail'))
-            
+                              bounds=(0, 0.5 * cube_radius),
+                              margin=arena_radius,
+                              sigmoid='long_tail'))
+
         grasp = (3 * grasp + 3) / 6
-        
+
         reward = in_place * small_control * grasp
         return np.array([reward])
 
@@ -236,12 +243,12 @@ class TaskOneEnv(gym.GoalEnv):
 
         return observation, reward, is_done, self.info
 
-    def reset(self):
+    def reset(self, **kwargs):
         # By changing the `_reset_*` method below you can switch between using
         # the platform frontend, which is needed for the submission system, and
         # the direct simulation, which may be more convenient if you want to
         # pre-train locally in simulation.
-        self._reset_direct_simulation()
+        self._reset_direct_simulation(**kwargs)
 
         self.step_count = 0
 
@@ -251,7 +258,7 @@ class TaskOneEnv(gym.GoalEnv):
 
         return observation
 
-    def _reset_direct_simulation(self):
+    def _reset_direct_simulation(self, **kwargs):
         """Reset direct simulation.
 
         With this the env can be used without backend.
@@ -275,10 +282,11 @@ class TaskOneEnv(gym.GoalEnv):
         if not self.object_state_space.contains(self.goal):
             raise ValueError("Invalid goal pose.")
 
+        time_step_s = kwargs.get('time_step_s', self.time_step_s)
         self.platform = trifinger_simulation.TriFingerPlatform(
             visualization=False,
             initial_object_pose=initial_object_pose,
-        )
+            time_step_s=time_step_s)
 
         self.goal_marker = CubeMarker(
             width=0.065,
@@ -324,7 +332,7 @@ class TaskOneEnv(gym.GoalEnv):
     def _create_observation(self, t, action):
         robot_observation = self.platform.get_robot_observation(t)
         camera_observation = self.platform.get_camera_observation(t)
-        
+
         observation = {
             "observation": {
                 "position": robot_observation.position,

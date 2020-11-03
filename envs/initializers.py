@@ -56,7 +56,7 @@ class CustomRandomInitializer:
 
     def get_initial_state(self):
         """Get a random initial object pose (always on the ground)."""
-        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
+        radius = 0.3 * move_cube._max_cube_com_distance_to_center * np.sqrt(
             move_cube.random.random())
         theta = move_cube.random.uniform(0, 2 * np.pi)
         x = radius * np.cos(theta)
@@ -73,18 +73,19 @@ class CustomRandomInitializer:
         return pose
 
     def get_goal(self):
-        if self.difficulty == 2:
+        if self.difficulty == 1:
             x = 0.0
-            y = 0.0
+            y = 0.1
+            z = move_cube._min_height
         else:
-            radius = move_cube._max_cube_com_distance_to_center * np.sqrt(move_cube.random.random())
+            radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
+                move_cube.random.random())
             theta = move_cube.random.uniform(0, 2 * np.pi)
             x = radius * np.cos(theta)
             y = radius * np.sin(theta)
-            
-        #z = move_cube._CUBE_WIDTH / 2
-        z = move_cube.random.uniform(move_cube._min_height,
-                                     move_cube._max_height)
+            z = move_cube.random.uniform(move_cube._min_height,
+                                         move_cube._max_height)
+
         orientation = np.array([0, 0, 0, 1])
         #yaw = move_cube.random.uniform(0, 2 * np.pi)
         #orientation = Rotation.from_euler("z", yaw).as_quat()

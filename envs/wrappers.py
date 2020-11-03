@@ -84,7 +84,6 @@ class QuaternionToCornersWrapper(gym.ObservationWrapper):
         return obs
 
 
-
 class QuaternionToEulerWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -185,5 +184,41 @@ class CubeMarkerWrapper(gym.Wrapper):
             width=0.065,
             position=self.env.goal['position'],
             orientation=self.env.goal['orientation'])
+
+        return obs
+
+
+class RandomizedTimeStepWrapper(gym.Wrapper):
+    def __init__(
+        self,
+        env,
+    ):
+        super().__init__(env)
+
+    def reset(self, **kwargs):
+        low = 1.0 / 1000.0
+        high = 1.0 / 60.0
+
+        time_step_s = np.random.uniform(low, high)
+
+        obs = self.env.reset(time_step_s=time_step_s)
+
+        return obs
+
+
+class RandomizedObjectPositionWrapper(gym.ObservationWrapper):
+    def __init__(self, env, std=0.01):
+        super().__init__(env)
+        self.std = std
+
+    def observation(self, obs):
+
+        pos_noise = np.random.normal(
+            0.0, self.std, size=obs['achieved_goal']['position'].shape)
+        or_noise = np.random.normal(
+            0.0, self.std, size=obs['achieved_goal']['orientation'].shape)
+
+        obs['achieved_goal']['position'] += pos_noise
+        obs['achieved_goal']['orientation'] += or_noise
 
         return obs

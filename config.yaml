@@ -1,9 +1,10 @@
 # env
 difficulty: 1
 env: task${difficulty}
-action_type: torque # torque or both
+action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
+obj_position_noise_std: 0.01
 num_corners: 1
 excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 # teacher
@@ -14,8 +15,8 @@ teacher_init_p: 1.0
 teacher_max_step: 3000000
 teacher_excluded_obses: action
 # denis curriculum
-train_initializer: random
-eval_initializer: random
+train_initializer: custom_random
+eval_initializer: custom_random
 curriculum_max_step: 1000000
 curriculum_init_p: 0.0
 # train
