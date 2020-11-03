@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import pybullet
 
 #from trifinger_simulation_v2.gym_wrapper.envs import cube_env
 from envs import task_one_env
