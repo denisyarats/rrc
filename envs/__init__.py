@@ -31,7 +31,7 @@ def make(env_name,
          control_margin,
          initializer,
          seed,
-         randomized=False,
+         randomize=True,
          obj_position_noise_std=0.1):
     assert action_type in ['position', 'torque', 'both']
 
@@ -42,17 +42,19 @@ def make(env_name,
     else:
         action_type = ActionType.TORQUE_AND_POSITION
 
+    
     env = gym.make(f'{env_name}-v1',
                    initializer=initializer,
                    action_type=action_type,
                    frameskip=action_repeat,
                    episode_length=episode_length,
                    num_corners=num_corners,
-                   control_margin=control_margin)
+                   control_margin=control_margin,
+                   enable_visual_objects=False)
 
     env.seed(seed)
 
-    if randomized:
+    if randomize:
         env = wrappers.RandomizedTimeStepWrapper(env)
         env = wrappers.RandomizedObjectPositionWrapper(env,
                                                        obj_position_noise_std)

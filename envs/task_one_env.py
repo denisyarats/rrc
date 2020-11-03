@@ -26,7 +26,8 @@ class TaskOneEnv(gym.GoalEnv):
                  frameskip=1,
                  episode_length=move_cube.episode_length,
                  num_corners=0,
-                 control_margin=0.01):
+                 control_margin=0.01,
+                 enable_visual_objects=False):
         """Initialize.
 
         Args:
@@ -50,6 +51,7 @@ class TaskOneEnv(gym.GoalEnv):
         assert self.episode_length <= move_cube.episode_length
         self.num_corners = num_corners
         self.control_margin = control_margin
+        self.enable_visual_objects = enable_visual_objects
 
         self.info = {"difficulty": self.initializer.difficulty}
 
@@ -165,6 +167,7 @@ class TaskOneEnv(gym.GoalEnv):
         above_ground = dmr.tolerance(min_z, bounds=(0.3 * min_height, np.inf))
 
         reward = in_place * above_ground
+        #print(f'pos={self.last_fingers_pos}')
         #import ipdb; ipdb.set_trace()
         if self.last_fingers_pos is not None:
             diff = np.linalg.norm(fingers_pos - self.last_fingers_pos,
@@ -174,7 +177,10 @@ class TaskOneEnv(gym.GoalEnv):
                                     value_at_margin=0,
                                     sigmoid='linear')
             small_control = (control + 2.0) / 3.0
+            #print(f'diff={diff},small_ctrl={small_control},reward={reward}')
             reward *= small_control
+            
+        
 
         self.last_fingers_pos = fingers_pos
 
@@ -261,14 +267,15 @@ class TaskOneEnv(gym.GoalEnv):
 
         is_done = self.step_count == self.episode_length
 
-        self.goal_marker.set_state(observation['desired_goal']['position'],
-                                   observation['desired_goal']['orientation'])
-        self.goal_orientation_marker.set_state(
-            observation['desired_goal']['position'],
-            observation['desired_goal']['orientation'])
-        self.object_orientation_marker.set_state(
-            observation['achieved_goal']['position'],
-            observation['achieved_goal']['orientation'])
+        if self.enable_visual_objects:
+            self.goal_marker.set_state(observation['desired_goal']['position'],
+                                       observation['desired_goal']['orientation'])
+            self.goal_orientation_marker.set_state(
+                observation['desired_goal']['position'],
+                observation['desired_goal']['orientation'])
+            self.object_orientation_marker.set_state(
+                observation['achieved_goal']['position'],
+                observation['achieved_goal']['orientation'])
 
         return observation, reward, is_done, self.info
 
@@ -318,28 +325,29 @@ class TaskOneEnv(gym.GoalEnv):
             initial_object_pose=initial_object_pose,
             time_step_s=time_step_s)
 
-        self.goal_marker = CubeMarker(
-            width=0.065,
-            position=goal_object_pose.position,
-            orientation=goal_object_pose.orientation,
-            physicsClientId=self.platform.simfinger._pybullet_client_id,
-        )
+        if self.enable_visual_objects:
+            self.goal_marker = CubeMarker(
+                width=0.065,
+                position=goal_object_pose.position,
+                orientation=goal_object_pose.orientation,
+                physicsClientId=self.platform.simfinger._pybullet_client_id,
+            )
 
-        self.object_orientation_marker = OrientationMarker(
-            length=0.5 * move_cube._CUBE_WIDTH,
-            radius=0.01,
-            position=initial_object_pose.position,
-            orientation=initial_object_pose.orientation,
-            physicsClientId=self.platform.simfinger._pybullet_client_id,
-        )
+            self.object_orientation_marker = OrientationMarker(
+                length=0.5 * move_cube._CUBE_WIDTH,
+                radius=0.01,
+                position=initial_object_pose.position,
+                orientation=initial_object_pose.orientation,
+                physicsClientId=self.platform.simfinger._pybullet_client_id,
+            )
 
-        self.goal_orientation_marker = OrientationMarker(
-            length=0.5 * move_cube._CUBE_WIDTH,
-            radius=0.01,
-            position=goal_object_pose.position,
-            orientation=goal_object_pose.orientation,
-            physicsClientId=self.platform.simfinger._pybullet_client_id,
-        )
+            self.goal_orientation_marker = OrientationMarker(
+                length=0.5 * move_cube._CUBE_WIDTH,
+                radius=0.01,
+                position=goal_object_pose.position,
+                orientation=goal_object_pose.orientation,
+                physicsClientId=self.platform.simfinger._pybullet_client_id,
+            )
 
     def seed(self, seed=None):
         """Sets the seed for this env’s random number generator.
