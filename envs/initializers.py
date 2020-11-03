@@ -3,7 +3,7 @@ import enum
 import numpy as np
 import gym
 
-from trifinger_simulation.tasks import move_cube
+from trifinger_simulation_v2.tasks import move_cube
 from scipy.spatial.transform import Rotation
 
 

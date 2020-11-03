@@ -2,8 +2,6 @@ import os
 import sys
 import json
 
-from trifinger_cameras.utils import convert_image
-from trifinger_simulation_v2 import camera
 #from trifinger_simulation_v2.gym_wrapper.envs import cube_env
 from envs import task_one_env
 from trifinger_simulation_v2.tasks import move_cube
@@ -14,7 +12,6 @@ import torch.nn as nn
 import numpy as np
 import gym
 from copy import deepcopy
-
 
 def collect_sim_data(policy_path, data, difficulty, goal, n_policies):
     

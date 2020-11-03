@@ -6,10 +6,10 @@ import gym
 import pybullet
 from copy import deepcopy
 
-import trifinger_simulation
-import trifinger_simulation.visual_objects
-from trifinger_simulation import trifingerpro_limits
-from trifinger_simulation.tasks import move_cube
+import trifinger_simulation_v2
+import trifinger_simulation_v2.visual_objects
+from trifinger_simulation_v2 import trifingerpro_limits
+from trifinger_simulation_v2.tasks import move_cube
 from scipy.spatial.transform import Rotation
 
 from dm_control.utils import rewards as dmr

@@ -3,8 +3,8 @@ import gym
 from copy import deepcopy
 from scipy.spatial.transform import Rotation as R
 
-from trifinger_simulation import visual_objects
-from trifinger_simulation.tasks import move_cube
+from trifinger_simulation_v2 import visual_objects
+from trifinger_simulation_v2.tasks import move_cube
 
 
 def flat_space(space, value=None, keys=[]):
