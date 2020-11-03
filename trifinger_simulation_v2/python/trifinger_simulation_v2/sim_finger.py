@@ -60,7 +60,7 @@ class SimFinger:
         #: on the simulation step size and has been set for a simulation rate
         #: of 250 Hz.
         self.position_gains = np.array(
-           [5.0, 5.0, 5.0] * self.number_of_fingers #[10.0, 10.0, 10.0] * self.number_of_fingers
+           [10.0, 10.0, 10.0] * self.number_of_fingers
         )
 
         #: The kd gains for the pd control of the finger(s). Note, this depends
