@@ -329,7 +329,7 @@ class TaskThreeEnv(gym.GoalEnv):
         if not self.object_state_space.contains(self.goal):
             raise ValueError("Invalid goal pose.")
 
-        self.platform = trifinger_simulation.TriFingerPlatform(
+        self.platform = trifinger_simulation_v2.TriFingerPlatform(
             visualization=False,
             initial_object_pose=initial_object_pose,
         )

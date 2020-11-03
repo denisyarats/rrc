@@ -13,6 +13,13 @@ import numpy as np
 import gym
 from copy import deepcopy
 
+def set_robot(env, pos):
+    robot_id = env.platform.simfinger.finger_id
+    joint_ids = env.platform.simfinger.pybullet_joint_indices
+    for i,j in enumerate(joint_ids):
+        pybullet.resetJointState(robot_id, j, pos[i])
+    return
+
 def collect_sim_data(policy_path, data, difficulty, goal, n_policies):
     
     steps = len(data)

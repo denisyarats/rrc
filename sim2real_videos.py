@@ -20,13 +20,6 @@ from copy import deepcopy
 from sim2real import collect_sim_data, collect_open_loop_data, dotdict, make_env
 
 
-def set_robot(env, pos):
-    robot_id = env.platform.simfinger.finger_id
-    joint_ids = env.platform.simfinger.pybullet_joint_indices
-    for i,j in enumerate(joint_ids):
-        pybullet.resetJointState(robot_id, j, pos[i])
-    return
-
 def render_trajectory(data, difficulty, goal, camera_id, 
                         caption_text=None, frameskip=1):
         

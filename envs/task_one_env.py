@@ -6,8 +6,8 @@ import gym
 import pybullet
 from copy import deepcopy
 
-import trifinger_simulation_v2
-import trifinger_simulation_v2.visual_objects
+import trifinger_simulation_v2 
+from trifinger_simulation_v2 import visual_objects
 from trifinger_simulation_v2 import trifingerpro_limits
 from trifinger_simulation_v2.tasks import move_cube
 from scipy.spatial.transform import Rotation
@@ -320,7 +320,7 @@ class TaskOneEnv(gym.GoalEnv):
             raise ValueError("Invalid goal pose.")
 
         time_step_s = kwargs.get('time_step_s', self.time_step_s)
-        self.platform = trifinger_simulation.TriFingerPlatform(
+        self.platform = trifinger_simulation_v2.TriFingerPlatform(
             visualization=False,
             initial_object_pose=initial_object_pose,
             time_step_s=time_step_s)
