@@ -35,6 +35,11 @@ class SimFinger:
         finger_type,
         time_step=0.004,
         enable_visualization=False,
+        gravity=-9.81,
+        restitution=0.8,
+        max_velocity=10,
+        lateral_friction=0.1,
+        finger_mass=[0.26, 0.25, 0.021, 0.031],
     ):
         """
         Constructor, initializes the physical world we will work in.
@@ -55,6 +60,11 @@ class SimFinger:
         )
 
         self.time_step_s = time_step
+        self.gravity = gravity
+        self.restitution = restitution
+        self.max_velocity = max_velocity
+        self.lateral_friction = lateral_friction
+        self.finger_mass = finger_mass
 
         #: The kp gains for the pd control of the finger(s). Note, this depends
         #: on the simulation step size and has been set for a simulation rate
@@ -560,7 +570,7 @@ class SimFinger:
         pybullet.setGravity(
             0,
             0,
-            -9.81,
+            self.gravity,
             physicsClientId=self._pybullet_client_id,
         )
         pybullet.setTimeStep(
@@ -586,10 +596,10 @@ class SimFinger:
             pybullet.changeDynamics(
                 bodyUniqueId=self.finger_id,
                 linkIndex=link_id,
-                maxJointVelocity=10,
-                restitution=0.8,
+                maxJointVelocity=self.max_velocity,
+                restitution=self.restitution,
                 jointDamping=0.0,
-                lateralFriction=0.1,
+                lateralFriction=self.lateral_friction,
                 spinningFriction=0.1,
                 rollingFriction=0.1,
                 linearDamping=0.5, 

@@ -96,6 +96,12 @@ class TriFingerPlatform:
         initial_object_pose=None,
         enable_cameras=False,
         time_step_s=0.004,
+        cube_mass=0.20,
+        gravity=-9.81,
+        restitution=0.8,
+        max_velocity=10,
+        lateral_friction=0.1,
+        finger_mass=[0.26, 0.25, 0.021, 0.031],
     ):
         """Initialize.
 
@@ -134,6 +140,11 @@ class TriFingerPlatform:
             finger_type="trifingerpro",
             time_step=self._time_step,
             enable_visualization=visualization,
+            gravity=gravity,
+            restitution=restitution,
+            max_velocity=max_velocity,
+            lateral_friction=lateral_friction,
+            finger_mass=finger_mass,
         )
 
         _kwargs = {"physicsClientId": self.simfinger._pybullet_client_id}
@@ -153,7 +164,7 @@ class TriFingerPlatform:
         self.cube = collision_objects.Block(
             initial_object_pose.position,
             initial_object_pose.orientation,
-            mass=0.020,
+            mass=cube_mass,
             **_kwargs,
         )
 
