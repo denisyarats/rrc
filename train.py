@@ -41,23 +41,18 @@ class Workspace(object):
         self.device = torch.device(cfg.device)
 
         # make initializers
-        self.train_initializer = envs.make_initializer(cfg.train_initializer,
+        self.initializer = envs.make_initializer(cfg.train_initializer,
                                                        cfg.difficulty,
                                                        cfg.curriculum_init_p,
                                                        cfg.curriculum_max_step)
-        self.eval_initializer = envs.make_initializer(cfg.eval_initializer,
-                                                      cfg.difficulty,
-                                                      cfg.curriculum_init_p,
-                                                      cfg.curriculum_max_step)
-
         # make envs
         self.env = envs.make(cfg.env,
                              cfg.action_type,
                              cfg.action_repeat,
                              cfg.episode_length,
                              cfg.num_corners,
-                             cfg.control_margin,
-                             self.train_initializer,
+                             cfg.action_scale,
+                             self.initializer,
                              cfg.seed,
                              randomize=True,
                              obj_position_noise_std=cfg.obj_position_noise_std)
@@ -98,8 +93,9 @@ class Workspace(object):
         average_episode_length = 0
         denominator = self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
-            obs = self.env.reset()
-            self.video_recorder.init(enabled=(episode == 0))
+            visualize = (episode == 0)
+            obs = self.env.reset(visualize_goal=visualize)
+            self.video_recorder.init(enabled=visualize)
             done = False
             episode_reward = np.zeros(self.env.reward_space.shape)
             episode_step = 0
@@ -161,9 +157,9 @@ class Workspace(object):
                         save=(self.step > self.cfg.num_seed_steps),
                         ty='train')
 
-                    if self.step % self.cfg.eval_frequency == 0:
-                        self.logger.log('eval/episode', episode, self.step)
-                        self.evaluate(self.agent)
+                if self.step % self.cfg.eval_frequency == 0:
+                    self.logger.log('eval/episode', episode, self.step)
+                    self.evaluate(self.agent)
 
                 ratio = max(self.cfg.teacher_max_step - self.step,
                             0) / self.cfg.teacher_max_step
@@ -174,7 +170,7 @@ class Workspace(object):
                 self.logger.log('train/teacher_steps', teacher_steps,
                                 self.step)
 
-                self.train_initializer.update(self.step)
+                self.initializer.update(self.step)
                 obs = self.env.reset()
                 self.train_video_recorder.init(enabled=True)
                 done = False

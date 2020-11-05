@@ -20,14 +20,14 @@ from envs.visual_objects import OrientationMarker, CubeMarker
 
 class TaskTwoEnv(gym.GoalEnv):
     """Gym environment for moving cubes with simulated TriFingerPro."""
-    def __init__(
-        self,
-        initializer,
-        action_type=ActionType.TORQUE,
-        frameskip=1,
-        episode_length=move_cube.episode_length,
-        num_corners=0,
-    ):
+    def __init__(self,
+                 initializer,
+                 action_type=ActionType.TORQUE,
+                 frameskip=1,
+                 episode_length=move_cube.episode_length,
+                 num_corners=0,
+                 control_margin=0.01,
+                 enable_visual_objects=False):
         """Initialize.
 
         Args:
@@ -50,6 +50,8 @@ class TaskTwoEnv(gym.GoalEnv):
         self.episode_length = episode_length * frameskip
         assert self.episode_length <= move_cube.episode_length
         self.num_corners = num_corners
+        self.control_margin = control_margin
+        self.enable_visual_objects = enable_visual_objects
 
         self.info = {"difficulty": self.initializer.difficulty}
 
@@ -63,6 +65,8 @@ class TaskTwoEnv(gym.GoalEnv):
 
         # will be initialized in reset()
         self.platform = None
+
+        self.time_step_s = 0.004
 
         # Create the action and observation spaces
         # ========================================
@@ -122,7 +126,7 @@ class TaskTwoEnv(gym.GoalEnv):
                 "position": robot_position_space,
                 "velocity": robot_velocity_space,
                 "torque": robot_torque_space,
-                #"tip_force":  gym.spaces.Box(low=np.zeros(3, dtype=np.float32), high=np.ones(3, dtype=np.float32))
+                #"tip_force": gym.spaces.Box(low=np.zeros(3, dtype=np.float32), high=np.ones(3, dtype=np.float32))
             }),
             "action":
             deepcopy(self.action_space),
@@ -152,83 +156,74 @@ class TaskTwoEnv(gym.GoalEnv):
                                  margin=cube_radius,
                                  sigmoid='long_tail')
 
+        fingers_pos = []
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+            fingers_pos.append(finger_pos)
+        fingers_pos = np.array(fingers_pos)
+
+        min_z = fingers_pos[:, 2].min()
+
+        above_ground = dmr.tolerance(min_z, bounds=(0.3 * min_height, np.inf))
+
+        reward = in_place * above_ground
+        #print(f'pos={self.last_fingers_pos}')
+        #import ipdb; ipdb.set_trace()
+        if self.last_fingers_pos is not None:
+            diff = np.linalg.norm(fingers_pos - self.last_fingers_pos,
+                                  axis=1).mean()
+            control = dmr.tolerance(diff,
+                                    margin=self.control_margin * cube_radius,
+                                    value_at_margin=0,
+                                    sigmoid='linear')
+            small_control = (control + 2.0) / 3.0
+            #print(f'diff={diff},small_ctrl={small_control},reward={reward}')
+            reward *= small_control
+            
+            
         above_ground = dmr.tolerance(
             object_pos[2],
             bounds=(target_pos[2] - 0.001 * min_height,
                     target_pos[2] + 0.001 * min_height),
             margin=0.999 * min_height,
             sigmoid='long_tail')
-
-        above_ground = (5 * above_ground + 1) / 6
-
-        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
-        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
-
-        actual_rot = Rotation.from_quat(actual_pose.orientation)
-        goal_rot = Rotation.from_quat(goal_pose.orientation)
-        error_rot = goal_rot.inv() * actual_rot
-        orientation_error = error_rot.magnitude() / np.pi
-
-        orientation = dmr.tolerance(orientation_error,
-                                    bounds=(0.0, 0.01),
-                                    margin=0.99,
-                                    sigmoid='long_tail')
         
-        velocity = np.linalg.norm(observation['observation']['velocity'])
-        control = dmr.tolerance(velocity, margin=1, value_at_margin=0, sigmoid='quadratic')
-        small_control = (control + 4) / 5
+        #above_ground = (5 * above_ground + 1) / 6
+        
+        reward *= above_ground
+        
 
-        orientation = (5 * orientation + 1) / 6
+        self.last_fingers_pos = fingers_pos
 
-        reward = in_place * above_ground * small_control
         return np.array([reward])
 
-    def compute_reward_old(self, observation, info):
-        cube_radius = move_cube._cube_3d_radius
-        arena_radius = move_cube._ARENA_RADIUS
-        min_height = move_cube._min_height
-        max_height = move_cube._max_height
-
-        robot_id = self.platform.simfinger.finger_id
-        finger_ids = self.platform.simfinger.pybullet_tip_link_indices
-
-        # compute reward to see if the object reached the target
-        object_pos = observation['achieved_goal']['position']
-        target_pos = observation['desired_goal']['position']
-        object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
-        in_place = dmr.tolerance(object_to_target,
-                                 bounds=(0, 0.001 * cube_radius),
-                                 margin=cube_radius,
-                                 sigmoid='long_tail')
+        velocity = np.linalg.norm(observation['observation']['velocity'])
+        control = dmr.tolerance(velocity,
+                                margin=1,
+                                value_at_margin=0,
+                                sigmoid='quadratic')
+        small_control = (control + 4) / 5
 
         import ipdb
         ipdb.set_trace()
 
-        above_ground = dmr.tolerance(
-            object_pos[2],
-            bounds=(target_pos[2] - 0.001 * min_height,
-                    target_pos[2] + 0.001 * min_height),
-            margin=0.999 * min_height,
-            sigmoid='long_tail')
-
-        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
-        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
-
-        actual_corners = move_cube.get_cube_corner_positions(actual_pose)
-        goal_corners = move_cube.get_cube_corner_positions(goal_pose)
-
-        orientation_errors = np.linalg.norm(goal_corners - actual_corners,
-                                            axis=1)[:self.num_corners]
-
-        rewards = [above_ground, in_place]
-        for e in orientation_errors:
-            r = dmr.tolerance(e,
-                              bounds=(0, 0.001 * cube_radius),
+        grasp = 0
+        for finger_id in finger_ids:
+            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
+            finger_to_object = np.linalg.norm(finger_pos - object_pos)
+            grasp = max(
+                grasp,
+                dmr.tolerance(finger_to_object,
+                              bounds=(0, 0.5 * cube_radius),
                               margin=arena_radius,
-                              sigmoid='long_tail')
-            rewards.append(r)
+                              sigmoid='long_tail'))
 
-        return np.array(rewards)
+        grasp = (3 * grasp + 3) / 6
+
+        return np.array([in_place])
+
+        reward = in_place * small_control * grasp
+        return np.array([reward])
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.
@@ -283,25 +278,27 @@ class TaskTwoEnv(gym.GoalEnv):
 
         is_done = self.step_count == self.episode_length
 
-        self.goal_marker.set_state(observation['desired_goal']['position'],
-                                   observation['desired_goal']['orientation'])
-        self.goal_orientation_marker.set_state(
-            observation['desired_goal']['position'],
-            observation['desired_goal']['orientation'])
-        self.object_orientation_marker.set_state(
-            observation['achieved_goal']['position'],
-            observation['achieved_goal']['orientation'])
+        if self.enable_visual_objects:
+            self.goal_marker.set_state(observation['desired_goal']['position'],
+                                       observation['desired_goal']['orientation'])
+            self.goal_orientation_marker.set_state(
+                observation['desired_goal']['position'],
+                observation['desired_goal']['orientation'])
+            self.object_orientation_marker.set_state(
+                observation['achieved_goal']['position'],
+                observation['achieved_goal']['orientation'])
 
         return observation, reward, is_done, self.info
 
-    def reset(self):
+    def reset(self, **kwargs):
         # By changing the `_reset_*` method below you can switch between using
         # the platform frontend, which is needed for the submission system, and
         # the direct simulation, which may be more convenient if you want to
         # pre-train locally in simulation.
-        self._reset_direct_simulation()
+        self._reset_direct_simulation(**kwargs)
 
         self.step_count = 0
+        self.last_fingers_pos = None
 
         # need to already do one step to get initial observation
         # TODO disable frameskip here?
@@ -309,7 +306,7 @@ class TaskTwoEnv(gym.GoalEnv):
 
         return observation
 
-    def _reset_direct_simulation(self):
+    def _reset_direct_simulation(self, **kwargs):
         """Reset direct simulation.
 
         With this the env can be used without backend.
@@ -333,33 +330,35 @@ class TaskTwoEnv(gym.GoalEnv):
         if not self.object_state_space.contains(self.goal):
             raise ValueError("Invalid goal pose.")
 
+        time_step_s = kwargs.get('time_step_s', self.time_step_s)
         self.platform = trifinger_simulation_v2.TriFingerPlatform(
             visualization=False,
             initial_object_pose=initial_object_pose,
-        )
+            time_step_s=time_step_s)
 
-        self.goal_marker = CubeMarker(
-            width=0.065,
-            position=goal_object_pose.position,
-            orientation=goal_object_pose.orientation,
-            physicsClientId=self.platform.simfinger._pybullet_client_id,
-        )
+        if self.enable_visual_objects:
+            self.goal_marker = CubeMarker(
+                width=0.065,
+                position=goal_object_pose.position,
+                orientation=goal_object_pose.orientation,
+                physicsClientId=self.platform.simfinger._pybullet_client_id,
+            )
 
-        self.object_orientation_marker = OrientationMarker(
-            length=0.5 * move_cube._CUBE_WIDTH,
-            radius=0.01,
-            position=initial_object_pose.position,
-            orientation=initial_object_pose.orientation,
-            physicsClientId=self.platform.simfinger._pybullet_client_id,
-        )
+            self.object_orientation_marker = OrientationMarker(
+                length=0.5 * move_cube._CUBE_WIDTH,
+                radius=0.01,
+                position=initial_object_pose.position,
+                orientation=initial_object_pose.orientation,
+                physicsClientId=self.platform.simfinger._pybullet_client_id,
+            )
 
-        self.goal_orientation_marker = OrientationMarker(
-            length=0.5 * move_cube._CUBE_WIDTH,
-            radius=0.01,
-            position=goal_object_pose.position,
-            orientation=goal_object_pose.orientation,
-            physicsClientId=self.platform.simfinger._pybullet_client_id,
-        )
+            self.goal_orientation_marker = OrientationMarker(
+                length=0.5 * move_cube._CUBE_WIDTH,
+                radius=0.01,
+                position=goal_object_pose.position,
+                orientation=goal_object_pose.orientation,
+                physicsClientId=self.platform.simfinger._pybullet_client_id,
+            )
 
     def seed(self, seed=None):
         """Sets the seed for this env’s random number generator.
@@ -382,7 +381,7 @@ class TaskTwoEnv(gym.GoalEnv):
     def _create_observation(self, t, action):
         robot_observation = self.platform.get_robot_observation(t)
         camera_observation = self.platform.get_camera_observation(t)
-        
+
         observation = {
             "observation": {
                 "position": robot_observation.position,

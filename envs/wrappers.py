@@ -155,8 +155,9 @@ class FlattenObservationWrapper(gym.ObservationWrapper):
 
 
 class ActionScalingWrapper(gym.ActionWrapper):
-    def __init__(self, env, low, high):
+    def __init__(self, env, alpha, low, high):
         super().__init__(env)
+        self.alpha = alpha
         self.low = low
         self.high = high
 
@@ -167,6 +168,8 @@ class ActionScalingWrapper(gym.ActionWrapper):
 
     def action(self, action):
         scale = self.high - self.low
+        # decrease magnitude
+        action *= self.alpha
         action = (action - self.low) / scale
         true_scale = self.env.action_space.high - self.env.action_space.low
         action = action * true_scale + self.env.action_space.low
@@ -201,7 +204,7 @@ class RandomizedTimeStepWrapper(gym.Wrapper):
 
         time_step_s = np.random.uniform(low, high)
 
-        obs = self.env.reset(time_step_s=time_step_s)
+        obs = self.env.reset(time_step_s=time_step_s, **kwargs)
 
         return obs
 

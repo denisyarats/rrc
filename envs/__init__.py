@@ -28,7 +28,7 @@ def make(env_name,
          action_repeat,
          episode_length,
          num_corners,
-         control_margin,
+         action_scale,
          initializer,
          seed,
          randomize=True,
@@ -49,7 +49,6 @@ def make(env_name,
                    frameskip=action_repeat,
                    episode_length=episode_length,
                    num_corners=num_corners,
-                   control_margin=control_margin,
                    enable_visual_objects=False)
 
     env.seed(seed)
@@ -61,7 +60,7 @@ def make(env_name,
 
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
-    env = wrappers.ActionScalingWrapper(env, low=-1.0, high=+1.0)
+    env = wrappers.ActionScalingWrapper(env, alpha=action_scale, low=-1.0, high=+1.0)
 
     action_space = env.action_space
     assert np.all(action_space.low >= -1.0)

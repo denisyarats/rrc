@@ -5,8 +5,8 @@ action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
 obj_position_noise_std: 0.001
-num_corners: 1
-control_margin: 0.01
+num_corners: 2
+action_scale: 1.0
 excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 # teacher
 use_teacher: false

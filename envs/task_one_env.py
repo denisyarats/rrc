@@ -26,7 +26,6 @@ class TaskOneEnv(gym.GoalEnv):
                  frameskip=1,
                  episode_length=move_cube.episode_length,
                  num_corners=0,
-                 control_margin=0.01,
                  enable_visual_objects=False):
         """Initialize.
 
@@ -50,7 +49,6 @@ class TaskOneEnv(gym.GoalEnv):
         self.episode_length = episode_length * frameskip
         assert self.episode_length <= move_cube.episode_length
         self.num_corners = num_corners
-        self.control_margin = control_margin
         self.enable_visual_objects = enable_visual_objects
 
         self.info = {"difficulty": self.initializer.difficulty}
@@ -152,37 +150,13 @@ class TaskOneEnv(gym.GoalEnv):
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
         in_place = dmr.tolerance(object_to_target,
-                                 bounds=(0, 0.001 * cube_radius),
-                                 margin=cube_radius,
-                                 sigmoid='long_tail')
+                                 bounds=(0, 0.01 * cube_radius),
+                                 margin=cube_radius)
+                                 #sigmoid='long_tail')
 
-        fingers_pos = []
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            fingers_pos.append(finger_pos)
-        fingers_pos = np.array(fingers_pos)
-
-        min_z = fingers_pos[:, 2].min()
-
-        above_ground = dmr.tolerance(min_z, bounds=(0.3 * min_height, np.inf))
-
-        reward = in_place * above_ground
+        reward = in_place
         #print(f'pos={self.last_fingers_pos}')
         #import ipdb; ipdb.set_trace()
-        if self.last_fingers_pos is not None:
-            diff = np.linalg.norm(fingers_pos - self.last_fingers_pos,
-                                  axis=1).mean()
-            control = dmr.tolerance(diff,
-                                    margin=self.control_margin * cube_radius,
-                                    value_at_margin=0,
-                                    sigmoid='linear')
-            small_control = (control + 2.0) / 3.0
-            #print(f'diff={diff},small_ctrl={small_control},reward={reward}')
-            reward *= small_control
-            
-        
-
-        self.last_fingers_pos = fingers_pos
 
         return np.array([reward])
 
@@ -265,7 +239,7 @@ class TaskOneEnv(gym.GoalEnv):
             if self.step_count >= self.episode_length:
                 break
 
-        is_done = self.step_count == self.episode_length
+        is_done = self.step_count >= self.episode_length
 
         if self.enable_visual_objects:
             self.goal_marker.set_state(observation['desired_goal']['position'],
@@ -287,7 +261,6 @@ class TaskOneEnv(gym.GoalEnv):
         self._reset_direct_simulation(**kwargs)
 
         self.step_count = 0
-        self.last_fingers_pos = None
 
         # need to already do one step to get initial observation
         # TODO disable frameskip here?
@@ -325,25 +298,9 @@ class TaskOneEnv(gym.GoalEnv):
             initial_object_pose=initial_object_pose,
             time_step_s=time_step_s)
 
-        if self.enable_visual_objects:
+        if kwargs.get('visualize_goal', True):
             self.goal_marker = CubeMarker(
                 width=0.065,
-                position=goal_object_pose.position,
-                orientation=goal_object_pose.orientation,
-                physicsClientId=self.platform.simfinger._pybullet_client_id,
-            )
-
-            self.object_orientation_marker = OrientationMarker(
-                length=0.5 * move_cube._CUBE_WIDTH,
-                radius=0.01,
-                position=initial_object_pose.position,
-                orientation=initial_object_pose.orientation,
-                physicsClientId=self.platform.simfinger._pybullet_client_id,
-            )
-
-            self.goal_orientation_marker = OrientationMarker(
-                length=0.5 * move_cube._CUBE_WIDTH,
-                radius=0.01,
                 position=goal_object_pose.position,
                 orientation=goal_object_pose.orientation,
                 physicsClientId=self.platform.simfinger._pybullet_client_id,

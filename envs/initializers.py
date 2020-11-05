@@ -56,7 +56,7 @@ class CustomRandomInitializer:
 
     def get_initial_state(self):
         """Get a random initial object pose (always on the ground)."""
-        radius = 0.3 * move_cube._max_cube_com_distance_to_center * np.sqrt(
+        radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
             move_cube.random.random())
         theta = move_cube.random.uniform(0, 2 * np.pi)
         x = radius * np.cos(theta)
@@ -74,9 +74,32 @@ class CustomRandomInitializer:
 
     def get_goal(self):
         if self.difficulty == 1:
-            x = 0.0
-            y = 0.1
-            z = move_cube._min_height
+            radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
+                move_cube.random.random())
+            theta = move_cube.random.uniform(0, 2 * np.pi)
+            x = 0 #radius * np.cos(theta)
+            y = 0 #radius * np.sin(theta)
+            z = move_cube._CUBE_WIDTH / 2
+            orientation = np.array([0, 0, 0, 1])
+
+            pose = move_cube.Pose()
+            pose.position = np.array((x, y, z))
+            pose.orientation = orientation
+
+            return pose
+        elif self.difficulty == 2:
+            x = 0
+            y = 0
+            z = move_cube._min_height + 0.05
+
+            orientation = np.array([0, 0, 0, 1])
+
+            pose = move_cube.Pose()
+            pose.position = np.array((x, y, z))
+            pose.orientation = orientation
+
+            return pose
+
         else:
             radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
                 move_cube.random.random())
