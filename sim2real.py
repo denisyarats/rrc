@@ -302,3 +302,62 @@ def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
         env = ActionScalingWrapper(env, low=-1.0, high=+1.0)
 
     return env
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_path")
+    parser.add_argument("--steps", default=1000, type=int)
+    parser.add_argument("--n_policies", default=1, type=int)
+    #parser.add_argument("--visualization", default=False)
+    args = parser.parse_args()
+
+    goal_path = os.path.join(args.data_path, 'goal.json')
+    with open(goal_path) as f:
+        goal_dict = dotdict(json.load(f))
+    difficulty = goal_dict.difficulty
+    goal = dotdict(goal_dict.goal)
+    goal.position = np.array(goal.position)
+    goal.orientation = np.array(goal.orientation)
+
+    print('loading data')
+    robot_data_file = os.path.join(args.data_path, 'robot_data.dat')
+    camera_data_file = os.path.join(args.data_path, 'camera_data.dat')
+    log = robot_fingers.TriFingerPlatformLog(robot_data_file, camera_data_file)
+
+    data = []
+
+    for t in range(log.get_first_timeindex(), log.get_first_timeindex() + args.steps):
+        robot_observation = log.get_robot_observation(t)
+        desired_action = log.get_desired_action(t)
+        applied_action = log.get_desired_action(t)
+
+        observation = {
+            'observation': {
+                'position': robot_observation.position,
+                'velocity': robot_observation.velocity,
+                'torque': robot_observation.torque,
+            },
+            'desired_action': desired_action.torque,
+            'applied_accion': applied_action.torque,
+            'achieved_goal': {
+                'position': camera_observation.object_pose.position,
+                'orientation': camera_observation.object_pose.orientation,
+            },
+        }
+        data.append(observation)
+    
+    data_save_path = os.path.join(args.data_path, 'data.pt')
+    torch.save(data, data_save_path)
+    data = torch.load(data_save_path)
+
+    print('making open loop')
+    open_loop_data = collect_open_loop_data(data, difficulty, goal)
+    open_data_save_path = os.path.join(args.data_path, 'open_loop_data.pt')
+    torch.save(open_loop_data, open_data_save_path)
+
+    print('making policy')
+    policy_data = collect_sim_data(args.data_path, data, difficulty, goal, args.n_policies)
+    policy_data_save_path = os.path.join(args.data_path, 'policy_data.pt')
+    torch.save(policy_data, policy_data_save_path)
