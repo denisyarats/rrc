@@ -1,6 +1,6 @@
 # env
 use_old_simulator: false
-difficulty: 4
+difficulty: 1
 env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
@@ -22,19 +22,19 @@ max_velocity_low: 9.5
 max_velocity_high: 10.5
 lateral_friction_low: 0.08
 lateral_friction_high: 0.12
-camera_rate_fps_low: 8
-camera_rate_fps_high: 12
+camera_rate_fps_low: 2
+camera_rate_fps_high: 5
 
-excluded_obses: action #desired_goal_orientation:achieved_goal_orientation
+excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 use_pretrained: false
-pretrained_model_dir: ../../../pretrained_agents/phase1
+pretrained_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/phase1
 # teacher
 use_teacher: false
-teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.11.02/144347_ddpg_task1_randomize/14/model
-teacher_model_step: 0
+teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.11.05/120800_ddpg_task14_old_rew_rnd/0/model
+teacher_model_step: 4200000
 teacher_init_p: 1.0
-teacher_max_step: 3800000
-teacher_excluded_obses: null
+teacher_max_step: 3000000
+teacher_excluded_obses: action
 # denis curriculum
 train_initializer: random
 eval_initializer: random

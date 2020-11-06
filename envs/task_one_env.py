@@ -171,6 +171,8 @@ class TaskOneEnv(gym.GoalEnv):
                                  bounds=(0, 0.001 * cube_radius),
                                  margin=cube_radius,
                                  sigmoid='long_tail')
+        
+        return in_place
 
         above_ground = dmr.tolerance(
             object_pos[2],

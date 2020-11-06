@@ -191,7 +191,7 @@ class Workspace(object):
                 self.logger.log('train/episode', episode, self.step)
 
             # sample action for data collection
-            if not self.cfg.use_pretrained and self.step < num_seed_steps:
+            if not self.cfg.use_pretrained and self.step < self.cfg.num_seed_steps:
                 action_space = self.env.action_space
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),
