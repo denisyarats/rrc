@@ -101,6 +101,7 @@ class TriFingerPlatform:
         restitution=0.8,
         max_velocity=10,
         lateral_friction=0.1,
+        camera_rate_fps=10,
         finger_mass=[0.26, 0.25, 0.021, 0.031],
     ):
         """Initialize.
@@ -122,7 +123,7 @@ class TriFingerPlatform:
         """
         #: Camera rate in frames per second.  Observations of camera and
         #: object pose will only be updated with this rate.
-        self.camera_rate_fps = 10
+        self.camera_rate_fps = camera_rate_fps
 
         #: Set to true to render camera observations
         self.enable_cameras = enable_cameras

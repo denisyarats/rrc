@@ -214,7 +214,7 @@ class DomainRandomizationWrapper(gym.Wrapper):
                  cube_mass_low, cube_mass_high, gravity_low, gravity_high,
                  restitution_low, restitution_high, max_velocity_low,
                  max_velocity_high, lateral_friction_low,
-                 lateral_friction_high):
+                 lateral_friction_high, camera_rate_fps_low, camera_rate_fps_high):
 
         super().__init__(env)
 
@@ -231,6 +231,8 @@ class DomainRandomizationWrapper(gym.Wrapper):
         self.max_velocity_high = max_velocity_high
         self.lateral_friction_low = lateral_friction_low
         self.lateral_friction_high = lateral_friction_high
+        self.camera_rate_fps_low = camera_rate_fps_low
+        self.camera_rate_fps_high = camera_rate_fps_high
 
     def reset(self, **kwargs):
         time_step = np.random.uniform(self.time_step_low, self.time_step_high)
@@ -242,6 +244,7 @@ class DomainRandomizationWrapper(gym.Wrapper):
                                          self.max_velocity_high)
         lateral_friction = np.random.uniform(self.lateral_friction_low,
                                              self.lateral_friction_high)
+        camera_rate_fps = np.random.uniform(self.camera_rate_fps_low, self.camera_rate_fps_high)
 
         obs = self.env.reset(time_step_s=time_step,
                              cube_mass=cube_mass,
@@ -249,6 +252,7 @@ class DomainRandomizationWrapper(gym.Wrapper):
                              restitution=restitution,
                              max_velocity=max_velocity,
                              lateral_friction=lateral_friction,
+                             camera_rate_fps=camera_rate_fps,
                              **kwargs)
         
         return self.observation(obs)

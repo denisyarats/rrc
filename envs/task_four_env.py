@@ -353,6 +353,7 @@ class TaskFourEnv(gym.GoalEnv):
         restitution = kwargs.get('restitution', 0.8)
         max_velocity = kwargs.get('max_velocity', 10)
         lateral_friction = kwargs.get('lateral_friction', 0.1)
+        camera_rate_fps = kwargs.get('lateral_friction', 10)
 
         self.platform = trifinger_simulation_v2.TriFingerPlatform(
             visualization=False,
@@ -362,7 +363,8 @@ class TaskFourEnv(gym.GoalEnv):
             gravity=gravity,
             restitution=restitution,
             max_velocity=max_velocity,
-            lateral_friction=lateral_friction)
+            lateral_friction=lateral_friction,
+            camera_rate_fps=camera_rate_fps)
 
         if kwargs.get('visualize_goal', True):
             self.goal_marker = CubeMarker(

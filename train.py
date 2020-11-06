@@ -73,7 +73,9 @@ class Workspace(object):
                              max_velocity_low=cfg.max_velocity_low,
                              max_velocity_high=cfg.max_velocity_high,
                              lateral_friction_low=cfg.lateral_friction_low,
-                             lateral_friction_high=cfg.lateral_friction_high)
+                             lateral_friction_high=cfg.lateral_friction_high,
+                             camera_rate_fps_low=cfg.camera_rate_fps_low,
+                             camera_rate_fps_high=cfg.camera_rate_fps_high)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space

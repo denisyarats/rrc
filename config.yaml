@@ -22,6 +22,8 @@ max_velocity_low: 9.5
 max_velocity_high: 10.5
 lateral_friction_low: 0.08
 lateral_friction_high: 0.12
+camera_rate_fps_low: 8
+camera_rate_fps_high: 12
 
 excluded_obses: action #desired_goal_orientation:achieved_goal_orientation
 use_pretrained: false
