@@ -1,4 +1,5 @@
 # env
+use_old_simulator: false
 difficulty: 4
 env: task${difficulty}
 action_type: position # torque or both
@@ -24,7 +25,7 @@ lateral_friction_high: 0.12
 
 excluded_obses: action #desired_goal_orientation:achieved_goal_orientation
 use_pretrained: false
-pretrained_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/phase1
+pretrained_model_dir: ../../../pretrained_agents/phase1
 # teacher
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.11.02/144347_ddpg_task1_randomize/14/model

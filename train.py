@@ -10,7 +10,6 @@ import time
 
 import numpy as np
 
-import envs as envs
 import hydra
 import torch
 import utils
@@ -40,11 +39,18 @@ class Workspace(object):
         utils.set_seed_everywhere(cfg.seed)
         self.device = torch.device(cfg.device)
 
+        if cfg.use_old_simulator:
+            import old_envs as envs
+        else:
+            import envs as envs
+
         # make initializers
         self.initializer = envs.make_initializer(cfg.train_initializer,
                                                  cfg.difficulty,
                                                  cfg.curriculum_init_p,
                                                  cfg.curriculum_max_step)
+        
+        
         # make envs
         self.env = envs.make(cfg.env,
                              cfg.action_type,
