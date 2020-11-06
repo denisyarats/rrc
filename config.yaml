@@ -1,13 +1,30 @@
 # env
-difficulty: 1
+difficulty: 4
 env: task${difficulty}
 action_type: position # torque or both
 action_repeat: 1
 episode_length: 500
-obj_position_noise_std: 0.001
-num_corners: 2
+num_corners: 1
 action_scale: 1.0
-excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
+# domain randomization
+randomize: False
+obj_pos_noise_std: 0.001
+time_step_low: 0.001
+time_step_high: 0.02
+cube_mass_low: 0.17
+cube_mass_high: 0.23
+gravity_low: -9.85
+gravity_high: -9.77
+restitution_low: 0.75
+restitution_high: 0.85
+max_velocity_low: 9.5
+max_velocity_high: 10.5
+lateral_friction_low: 0.08
+lateral_friction_high: 0.12
+
+excluded_obses: action #desired_goal_orientation:achieved_goal_orientation
+use_pretrained: false
+pretrained_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/phase1
 # teacher
 use_teacher: false
 teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.11.02/144347_ddpg_task1_randomize/14/model
@@ -16,8 +33,8 @@ teacher_init_p: 1.0
 teacher_max_step: 3800000
 teacher_excluded_obses: null
 # denis curriculum
-train_initializer: custom_random
-eval_initializer: custom_random
+train_initializer: random
+eval_initializer: random
 curriculum_max_step: 1000000
 curriculum_init_p: 0.0
 # train
@@ -47,17 +64,7 @@ hidden_depth: 2
 hidden_dim: 1024
 nstep: 5
 random_nstep: true
-mixer_init_value: 0.001
-mixer_final_value: 10.0
-mixer_start: 10000
-mixer_period: 10000
-alpha_0: 2.0
-alpha_1: 10.0
-alpha_2: 10.0
-w0: 1.0
-w1: 1.0
-w2: 1.0
-w3: 1.0
+
 
 
 agent:
@@ -68,11 +75,9 @@ agent:
     obs_slices: ??? # to be specified later
     action_shape: ??? # to be specified later
     action_range: ??? # to be specified later
-    reward_shape: ??? # to be specified later
     device: ${device}
     critic_cfg: ${critic}
     actor_cfg: ${actor}
-    reward_mixer_cfg: ${constant_reward_mixer}
     discount: 0.99
     lr: ${lr}
     actor_update_frequency: 1
@@ -103,36 +108,6 @@ actor:
     parameterization: ${parameterization}
     use_ln: ${agent.params.use_ln}
     
-reward_mixer:
-  class: ddpg.RewardMixer
-  params:
-    reward_shape: ${agent.params.reward_shape}
-    init_value: ${mixer_init_value}
-    final_value: ${mixer_final_value}
-    start: ${mixer_start}
-    period: ${mixer_period}
-    #starts: [${mixer_start}, ${mixer_start}]
-    #periods: [${mixer_period}, ${mixer_period}]
-
-
-fixed_reward_mixer:
-  class: ddpg.FixedRewardMixer
-  params:
-    reward_shape: ${agent.params.reward_shape}
-    alpha_0: ${alpha_0}
-    alpha_1: ${alpha_1}
-    alpha_2: ${alpha_2}
-    
-    
-constant_reward_mixer:
-  class: ddpg.ConstantRewardMixer
-  params:
-    reward_shape: ${agent.params.reward_shape}
-    w0: ${w0}
-    w1: ${w1}
-    w2: ${w2}
-    w3: ${w3}
-
 experiment: bench
 
 # hydra configuration

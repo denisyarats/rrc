@@ -23,16 +23,12 @@ def make_initializer(name, difficulty, init_p=None, max_step=None):
         assert False, f'wrong initializer: {name}'
 
 
-def make(env_name,
-         action_type,
-         action_repeat,
-         episode_length,
-         num_corners,
-         action_scale,
-         initializer,
-         seed,
-         randomize=True,
-         obj_position_noise_std=0.1):
+def make(env_name, action_type, action_repeat, episode_length, num_corners,
+         action_scale, initializer, seed, randomize, obj_pos_noise_std,
+         time_step_low, time_step_high, cube_mass_low, cube_mass_high,
+         gravity_low, gravity_high, restitution_low, restitution_high,
+         max_velocity_low, max_velocity_high, lateral_friction_low,
+         lateral_friction_high):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -42,7 +38,6 @@ def make(env_name,
     else:
         action_type = ActionType.TORQUE_AND_POSITION
 
-    
     env = gym.make(f'{env_name}-v1',
                    initializer=initializer,
                    action_type=action_type,
@@ -54,13 +49,28 @@ def make(env_name,
     env.seed(seed)
 
     if randomize:
-        env = wrappers.RandomizedTimeStepWrapper(env)
-        env = wrappers.RandomizedObjectPositionWrapper(env,
-                                                       obj_position_noise_std)
+        env = wrappers.DomainRandomizationWrapper(
+            env,
+            obj_pos_noise_std=obj_pos_noise_std,
+            time_step_low=time_step_low,
+            time_step_high=time_step_high,
+            cube_mass_low=cube_mass_low,
+            cube_mass_high=cube_mass_high,
+            gravity_low=gravity_low,
+            gravity_high=gravity_high,
+            restitution_low=restitution_low,
+            restitution_high=restitution_high,
+            max_velocity_low=max_velocity_low,
+            max_velocity_high=max_velocity_high,
+            lateral_friction_low=lateral_friction_low,
+            lateral_friction_high=lateral_friction_high)
 
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
-    env = wrappers.ActionScalingWrapper(env, alpha=action_scale, low=-1.0, high=+1.0)
+    env = wrappers.ActionScalingWrapper(env,
+                                        alpha=action_scale,
+                                        low=-1.0,
+                                        high=+1.0)
 
     action_space = env.action_space
     assert np.all(action_space.low >= -1.0)

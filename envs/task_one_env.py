@@ -6,7 +6,7 @@ import gym
 import pybullet
 from copy import deepcopy
 
-import trifinger_simulation_v2 
+import trifinger_simulation_v2
 from trifinger_simulation_v2 import visual_objects
 from trifinger_simulation_v2 import trifingerpro_limits
 from trifinger_simulation_v2.tasks import move_cube
@@ -134,9 +134,27 @@ class TaskOneEnv(gym.GoalEnv):
             deepcopy(self.object_state_space),
         })
 
-        self.reward_space = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
-
     def compute_reward(self, observation, info):
+        """Compute the reward for the given achieved and desired goal.
+
+        Args:
+            achieved_goal (dict): Current pose of the object.
+            desired_goal (dict): Goal pose of the object.
+            info (dict): An info dictionary containing a field "difficulty"
+                which specifies the difficulty level.
+
+        Returns:
+            float: The reward that corresponds to the provided achieved goal
+            w.r.t. to the desired goal. Note that the following should always
+            hold true::
+
+                ob, reward, done, info = env.step()
+                assert reward == env.compute_reward(
+                    ob['achieved_goal'],
+                    ob['desired_goal'],
+                    info,
+                )
+        """
         cube_radius = move_cube._cube_3d_radius
         arena_radius = move_cube._ARENA_RADIUS
         min_height = move_cube._min_height
@@ -150,43 +168,35 @@ class TaskOneEnv(gym.GoalEnv):
         target_pos = observation['desired_goal']['position']
         object_to_target = np.linalg.norm(object_pos[:2] - target_pos[:2])
         in_place = dmr.tolerance(object_to_target,
-                                 bounds=(0, 0.01 * cube_radius),
-                                 margin=cube_radius)
-                                 #sigmoid='long_tail')
+                                 bounds=(0, 0.001 * cube_radius),
+                                 margin=cube_radius,
+                                 sigmoid='long_tail')
 
-        reward = in_place
-        #print(f'pos={self.last_fingers_pos}')
-        #import ipdb; ipdb.set_trace()
+        above_ground = dmr.tolerance(
+            object_pos[2],
+            bounds=(target_pos[2] - 0.001 * min_height,
+                    target_pos[2] + 0.001 * min_height),
+            margin=0.999 * min_height,
+            sigmoid='long_tail')
 
-        return np.array([reward])
+        actual_pose = move_cube.Pose.from_dict(observation['achieved_goal'])
+        goal_pose = move_cube.Pose.from_dict(observation['desired_goal'])
 
-        velocity = np.linalg.norm(observation['observation']['velocity'])
-        control = dmr.tolerance(velocity,
-                                margin=1,
-                                value_at_margin=0,
-                                sigmoid='quadratic')
-        small_control = (control + 4) / 5
+        actual_corners = move_cube.get_cube_corner_positions(actual_pose)
+        goal_corners = move_cube.get_cube_corner_positions(goal_pose)
 
-        import ipdb
-        ipdb.set_trace()
+        orientation_errors = np.linalg.norm(goal_corners - actual_corners,
+                                            axis=1)[:self.num_corners]
 
-        grasp = 0
-        for finger_id in finger_ids:
-            finger_pos = pybullet.getLinkState(robot_id, finger_id)[0]
-            finger_to_object = np.linalg.norm(finger_pos - object_pos)
-            grasp = max(
-                grasp,
-                dmr.tolerance(finger_to_object,
-                              bounds=(0, 0.5 * cube_radius),
+        rewards = [above_ground, in_place]
+        for e in orientation_errors:
+            r = dmr.tolerance(e,
+                              bounds=(0, 0.001 * cube_radius),
                               margin=arena_radius,
-                              sigmoid='long_tail'))
+                              sigmoid='long_tail')
+            rewards.append(r)
 
-        grasp = (3 * grasp + 3) / 6
-
-        return np.array([in_place])
-
-        reward = in_place * small_control * grasp
-        return np.array([reward])
+        return np.mean(rewards)
 
     def step(self, action):
         """Run one timestep of the environment's dynamics.
@@ -242,8 +252,9 @@ class TaskOneEnv(gym.GoalEnv):
         is_done = self.step_count >= self.episode_length
 
         if self.enable_visual_objects:
-            self.goal_marker.set_state(observation['desired_goal']['position'],
-                                       observation['desired_goal']['orientation'])
+            self.goal_marker.set_state(
+                observation['desired_goal']['position'],
+                observation['desired_goal']['orientation'])
             self.goal_orientation_marker.set_state(
                 observation['desired_goal']['position'],
                 observation['desired_goal']['orientation'])
@@ -292,11 +303,22 @@ class TaskOneEnv(gym.GoalEnv):
         if not self.object_state_space.contains(self.goal):
             raise ValueError("Invalid goal pose.")
 
-        time_step_s = kwargs.get('time_step_s', self.time_step_s)
+        time_step_s = kwargs.get('time_step_s', 0.004)
+        cube_mass = kwargs.get('cube_mass', 0.20)
+        gravity = kwargs.get('gravity', -9.81)
+        restitution = kwargs.get('restitution', 0.8)
+        max_velocity = kwargs.get('max_velocity', 10)
+        lateral_friction = kwargs.get('lateral_friction', 0.1)
+
         self.platform = trifinger_simulation_v2.TriFingerPlatform(
             visualization=False,
             initial_object_pose=initial_object_pose,
-            time_step_s=time_step_s)
+            time_step_s=time_step_s,
+            cube_mass=cube_mass,
+            gravity=gravity,
+            restitution=restitution,
+            max_velocity=max_velocity,
+            lateral_friction=lateral_friction)
 
         if kwargs.get('visualize_goal', True):
             self.goal_marker = CubeMarker(

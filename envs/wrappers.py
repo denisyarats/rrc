@@ -209,6 +209,72 @@ class RandomizedTimeStepWrapper(gym.Wrapper):
         return obs
 
 
+class DomainRandomizationWrapper(gym.Wrapper):
+    def __init__(self, env, obj_pos_noise_std, time_step_low, time_step_high,
+                 cube_mass_low, cube_mass_high, gravity_low, gravity_high,
+                 restitution_low, restitution_high, max_velocity_low,
+                 max_velocity_high, lateral_friction_low,
+                 lateral_friction_high):
+
+        super().__init__(env)
+
+        self.obj_pos_noise_std = obj_pos_noise_std
+        self.time_step_low = time_step_low
+        self.time_step_high = time_step_high
+        self.cube_mass_low = cube_mass_low
+        self.cube_mass_high = cube_mass_high
+        self.gravity_low = gravity_low
+        self.gravity_high = gravity_high
+        self.restitution_low = restitution_low
+        self.restitution_high = restitution_high
+        self.max_velocity_low = max_velocity_low
+        self.max_velocity_high = max_velocity_high
+        self.lateral_friction_low = lateral_friction_low
+        self.lateral_friction_high = lateral_friction_high
+
+    def reset(self, **kwargs):
+        time_step = np.random.uniform(self.time_step_low, self.time_step_high)
+        cube_mass = np.random.uniform(self.cube_mass_low, self.cube_mass_high)
+        gravity = np.random.uniform(self.gravity_low, self.gravity_high)
+        restitution = np.random.uniform(self.restitution_low,
+                                        self.restitution_high)
+        max_velocity = np.random.uniform(self.max_velocity_low,
+                                         self.max_velocity_high)
+        lateral_friction = np.random.uniform(self.lateral_friction_low,
+                                             self.lateral_friction_high)
+
+        obs = self.env.reset(time_step_s=time_step,
+                             cube_mass=cube_mass,
+                             gravity=gravity,
+                             restitution=restitution,
+                             max_velocity=max_velocity,
+                             lateral_friction=lateral_friction,
+                             **kwargs)
+        
+        return self.observation(obs)
+    
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        obs = self.observation(obs)
+        return obs, reward, done, info
+
+    def observation(self, obs):
+
+        pos_noise = np.random.normal(
+            0.0,
+            self.obj_pos_noise_std,
+            size=obs['achieved_goal']['position'].shape)
+        or_noise = np.random.normal(
+            0.0,
+            self.obj_pos_noise_std,
+            size=obs['achieved_goal']['orientation'].shape)
+
+        obs['achieved_goal']['position'] += pos_noise
+        obs['achieved_goal']['orientation'] += or_noise
+
+        return obs
+
+
 class RandomizedObjectPositionWrapper(gym.ObservationWrapper):
     def __init__(self, env, std=0.01):
         super().__init__(env)

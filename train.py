@@ -42,9 +42,9 @@ class Workspace(object):
 
         # make initializers
         self.initializer = envs.make_initializer(cfg.train_initializer,
-                                                       cfg.difficulty,
-                                                       cfg.curriculum_init_p,
-                                                       cfg.curriculum_max_step)
+                                                 cfg.difficulty,
+                                                 cfg.curriculum_init_p,
+                                                 cfg.curriculum_max_step)
         # make envs
         self.env = envs.make(cfg.env,
                              cfg.action_type,
@@ -54,12 +54,23 @@ class Workspace(object):
                              cfg.action_scale,
                              self.initializer,
                              cfg.seed,
-                             randomize=True,
-                             obj_position_noise_std=cfg.obj_position_noise_std)
+                             randomize=cfg.randomize,
+                             obj_pos_noise_std=cfg.obj_pos_noise_std,
+                             time_step_low=cfg.time_step_low,
+                             time_step_high=cfg.time_step_high,
+                             cube_mass_low=cfg.cube_mass_low,
+                             cube_mass_high=cfg.cube_mass_high,
+                             gravity_low=cfg.gravity_low,
+                             gravity_high=cfg.gravity_high,
+                             restitution_low=cfg.restitution_low,
+                             restitution_high=cfg.restitution_high,
+                             max_velocity_low=cfg.max_velocity_low,
+                             max_velocity_high=cfg.max_velocity_high,
+                             lateral_friction_low=cfg.lateral_friction_low,
+                             lateral_friction_high=cfg.lateral_friction_high)
 
         obs_space = self.env.observation_space
         action_space = self.env.action_space
-        reward_space = self.env.reward_space
 
         cfg.agent.params.obs_shape = obs_space.shape
         cfg.agent.params.obs_slices = self.env.obs_slices
@@ -68,8 +79,9 @@ class Workspace(object):
             float(self.env.action_space.low.min()),
             float(self.env.action_space.high.max())
         ]
-        cfg.agent.params.reward_shape = reward_space.shape
         self.agent = hydra.utils.instantiate(cfg.agent)
+        if cfg.use_pretrained:
+            self.agent.load(cfg.pretrained_model_dir, 1)
 
         if cfg.use_teacher:
             cfg.agent.params.excluded_obses = cfg.teacher_excluded_obses
@@ -77,7 +89,6 @@ class Workspace(object):
             self.teacher.load(cfg.teacher_model_dir, cfg.teacher_model_step)
 
         self.replay_buffer = ReplayBuffer(obs_space.shape, action_space.shape,
-                                          reward_space.shape,
                                           cfg.replay_buffer_capacity,
                                           self.device, cfg.random_nstep)
 
@@ -89,7 +100,7 @@ class Workspace(object):
         self.step = 0
 
     def evaluate(self, agent):
-        average_episode_reward = np.zeros(self.env.reward_space.shape)
+        average_episode_reward = 0
         average_episode_length = 0
         denominator = self.cfg.episode_length
         for episode in range(self.cfg.num_eval_episodes):
@@ -97,7 +108,7 @@ class Workspace(object):
             obs = self.env.reset(visualize_goal=visualize)
             self.video_recorder.init(enabled=visualize)
             done = False
-            episode_reward = np.zeros(self.env.reward_space.shape)
+            episode_reward = 0
             episode_step = 0
             reward_infos = defaultdict(float)
             while not done:
@@ -114,20 +125,17 @@ class Workspace(object):
 
         average_episode_reward /= self.cfg.num_eval_episodes
         average_episode_length /= self.cfg.num_eval_episodes
-        for i in range(average_episode_reward.shape[0]):
-            self.logger.log(f'eval/episode_reward_{i}',
-                            average_episode_reward[i], self.step)
-        self.logger.log(f'eval/episode_reward',
-                        np.mean(average_episode_reward), self.step)
+        self.logger.log(f'eval/episode_reward', average_episode_reward,
+                        self.step)
         self.logger.log('eval/episode_length', average_episode_length,
                         self.step)
         self.logger.dump(self.step, ty='eval')
 
     def run(self):
         episode, episode_step, done = 0, 0, True
-        episode_reward = np.zeros(self.env.reward_space.shape)
+        episode_reward = 0
         start_time = time.time()
-        assert self.cfg.eval_frequency % self.cfg.episode_length == 0, 'to prevent envs collision'
+
         while self.step <= self.cfg.num_train_steps:
             # evaluate agent periodically
 
@@ -142,15 +150,9 @@ class Workspace(object):
 
                     self.train_video_recorder.save(f'{self.step}.mp4')
 
-                    for i in range(episode_reward.shape[0]):
-                        self.logger.log(
-                            f'train/episode_reward_{i}',
-                            episode_reward[i] / self.cfg.episode_length,
-                            self.step)
-                    self.logger.log(
-                        f'train/episode_reward',
-                        episode_reward[-1] / self.cfg.episode_length,
-                        self.step)
+                    self.logger.log(f'train/episode_reward',
+                                    episode_reward / self.cfg.episode_length,
+                                    self.step)
 
                     self.logger.dump(
                         self.step,
@@ -174,14 +176,14 @@ class Workspace(object):
                 obs = self.env.reset()
                 self.train_video_recorder.init(enabled=True)
                 done = False
-                episode_reward = np.zeros(self.env.reward_space.shape)
+                episode_reward = 0
                 episode_step = 0
                 episode += 1
 
                 self.logger.log('train/episode', episode, self.step)
 
             # sample action for data collection
-            if self.step < self.cfg.num_seed_steps:
+            if not self.cfg.use_pretrained and self.step < num_seed_steps:
                 action_space = self.env.action_space
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),

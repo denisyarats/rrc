@@ -184,8 +184,8 @@ class ConstantRewardMixer(nn.Module):
 class DDPGAgent(object):
     """Data regularized Q: actor-critic method for learning from pixels."""
     def __init__(self, obs_shape, obs_slices, action_shape, action_range,
-                 reward_shape, device, critic_cfg, actor_cfg, reward_mixer_cfg,
-                 discount, lr, actor_update_frequency, critic_tau,
+                 device, critic_cfg, actor_cfg, discount, lr,
+                 actor_update_frequency, critic_tau,
                  critic_target_update_frequency, batch_size, nstep, use_ln,
                  excluded_obses):
         self.action_range = action_range
@@ -214,9 +214,6 @@ class DDPGAgent(object):
         self.critic_target = hydra.utils.instantiate(critic_cfg).to(
             self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
-
-        self.reward_mixer = hydra.utils.instantiate(reward_mixer_cfg).to(
-            self.device)
 
         # optimizers
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=lr)
@@ -292,17 +289,13 @@ class DDPGAgent(object):
         self.actor.log(logger, step)
 
     def update(self, replay_buffer, logger, step):
-        obs, action, rewards, next_obs, discount = \
+        obs, action, reward, next_obs, discount = \
           replay_buffer.sample(self.batch_size, self.discount, self.nstep)
 
         obs = self.preprocess_obs(obs)
         next_obs = self.preprocess_obs(next_obs)
 
-        self.reward_mixer.update(step)
-        reward = self.reward_mixer(rewards)
-
         logger.log('train/batch_reward', reward.mean(), step)
-        self.reward_mixer.log(logger, step)
 
         self.update_critic(obs, action, reward, next_obs, discount, logger,
                            step)
@@ -323,5 +316,5 @@ class DDPGAgent(object):
     def load(self, model_dir, step):
         self.actor.load_state_dict(
             torch.load('%s/actor_%s.pt' % (model_dir, step)))
-        #self.critic.load_state_dict(
-        #    torch.load('%s/critic_%s.pt' % (model_dir, step)))
+        self.critic.load_state_dict(
+            torch.load('%s/critic_%s.pt' % (model_dir, step)))
