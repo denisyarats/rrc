@@ -63,7 +63,9 @@ def make(env_name, action_type, action_repeat, episode_length, num_corners,
             max_velocity_low=max_velocity_low,
             max_velocity_high=max_velocity_high,
             lateral_friction_low=lateral_friction_low,
-            lateral_friction_high=lateral_friction_high)
+            lateral_friction_high=lateral_friction_high,
+            camera_rate_fps_low=camera_rate_fps_low,
+            camera_rate_fps_high=camera_rate_fps_high)
 
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
