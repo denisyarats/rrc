@@ -28,7 +28,8 @@ def make(env_name, action_type, action_repeat, episode_length, num_corners,
          time_step_low, time_step_high, cube_mass_low, cube_mass_high,
          gravity_low, gravity_high, restitution_low, restitution_high,
          max_velocity_low, max_velocity_high, lateral_friction_low,
-         lateral_friction_high, camera_rate_fps_low, camera_rate_fps_high):
+         lateral_friction_high, camera_rate_fps_low, camera_rate_fps_high,
+         delta_pos, delta):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -69,6 +70,8 @@ def make(env_name, action_type, action_repeat, episode_length, num_corners,
 
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)
+    if delta_pos:
+        env = wrappers.DeltaPositionActionWrapper(env, delta)
     env = wrappers.ActionScalingWrapper(env,
                                         alpha=action_scale,
                                         low=-1.0,

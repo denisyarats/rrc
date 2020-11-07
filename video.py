@@ -5,7 +5,7 @@ import imageio
 import numpy as np
 
 import utils
-from trifinger_simulation import camera
+from trifinger_simulation_v2 import camera
 
 
 class CustomTriFingerCameras:

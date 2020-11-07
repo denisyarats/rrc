@@ -176,6 +176,22 @@ class ActionScalingWrapper(gym.ActionWrapper):
         return action.astype(self.env.action_space.dtype)
 
 
+class DeltaPositionActionWrapper(gym.ActionWrapper):
+    def __init__(self, env, delta):
+        super().__init__(env)
+        self.delta = delta
+
+        self.action_space = gym.spaces.Box(low=-delta,
+                                           high=delta,
+                                           shape=self.env.action_space.shape,
+                                           dtype=self.env.action_space.dtype)
+
+    def action(self, action):
+        env_action = action + self.env.current_obs["position"]
+        env_action = np.clip(env_action, self.env.action_space.low, self.env.action_space.high)
+        return env_action.astype(self.env.action_space.dtype)
+
+
 class CubeMarkerWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)

@@ -3,6 +3,8 @@ use_old_simulator: false
 difficulty: 1
 env: task${difficulty}
 action_type: position # torque or both
+delta_pos: true # determines whether to use delta position actions
+delta: 0.1
 action_repeat: 1
 episode_length: 500
 num_corners: 1
@@ -24,6 +26,7 @@ lateral_friction_low: 0.08
 lateral_friction_high: 0.12
 camera_rate_fps_low: 2
 camera_rate_fps_high: 5
+
 
 excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
 use_pretrained: false
