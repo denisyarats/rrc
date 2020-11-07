@@ -306,6 +306,7 @@ class TaskFourEnv(gym.GoalEnv):
                 observation['achieved_goal']['position'],
                 observation['achieved_goal']['orientation'])
 
+        self.current_obs = observation
         return observation, reward, is_done, self.info
 
     def reset(self, **kwargs):
@@ -321,6 +322,7 @@ class TaskFourEnv(gym.GoalEnv):
         # TODO disable frameskip here?
         observation, _, _, _ = self.step(self._initial_action)
 
+        self.current_obs = observation
         return observation
 
     def _reset_direct_simulation(self, **kwargs):
