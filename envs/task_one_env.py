@@ -328,7 +328,7 @@ class TaskOneEnv(gym.GoalEnv):
             lateral_friction=lateral_friction,
             camera_rate_fps=camera_rate_fps)
 
-        if kwargs.get('visualize_goal', True):
+        if kwargs.get('visualize_goal', False):
             self.goal_marker = CubeMarker(
                 width=0.065,
                 position=goal_object_pose.position,

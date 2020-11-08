@@ -199,11 +199,10 @@ class Workspace(object):
                                            action_space.high.max(),
                                            action_space.shape)
             else:
-
                 use_teacher = self.cfg.use_teacher and episode_step < teacher_steps
                 agent = self.teacher if use_teacher else self.agent
                 with utils.eval_mode(agent):
-                    action = agent.act(obs, sample=True)
+                    action = agent.act(obs, sample=not use_teacher)
 
             # run training update
             if self.step >= self.cfg.num_seed_steps:

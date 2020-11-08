@@ -12,14 +12,14 @@ action_scale: 1.0
 # domain randomization
 randomize: False
 obj_pos_noise_std: 0.001
-time_step_low: 0.001
-time_step_high: 0.02
-cube_mass_low: 0.17
-cube_mass_high: 0.23
-gravity_low: -9.85
-gravity_high: -9.77
-restitution_low: 0.75
-restitution_high: 0.85
+time_step_low: 0.004
+time_step_high: 0.0040000001
+cube_mass_low: 0.91
+cube_mass_high: 0.99
+gravity_low: -9.82
+gravity_high: -9.80
+restitution_low: 0.78
+restitution_high: 0.82
 max_velocity_low: 9.5
 max_velocity_high: 10.5
 lateral_friction_low: 0.08
