@@ -24,12 +24,8 @@ def make_initializer(name, difficulty, init_p=None, max_step=None):
 
 
 def make(env_name, action_type, action_repeat, episode_length, num_corners,
-         action_scale, initializer, seed, randomize, obj_pos_noise_std,
-         time_step_low, time_step_high, cube_mass_low, cube_mass_high,
-         gravity_low, gravity_high, restitution_low, restitution_high,
-         max_velocity_low, max_velocity_high, lateral_friction_low,
-         lateral_friction_high, camera_rate_fps_low, camera_rate_fps_high,
-         delta_pos, delta):
+         action_scale, initializer, seed, randomize, delta_pos, delta,
+         **kwargs):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -50,23 +46,7 @@ def make(env_name, action_type, action_repeat, episode_length, num_corners,
     env.seed(seed)
 
     if randomize:
-        env = wrappers.DomainRandomizationWrapper(
-            env,
-            obj_pos_noise_std=obj_pos_noise_std,
-            time_step_low=time_step_low,
-            time_step_high=time_step_high,
-            cube_mass_low=cube_mass_low,
-            cube_mass_high=cube_mass_high,
-            gravity_low=gravity_low,
-            gravity_high=gravity_high,
-            restitution_low=restitution_low,
-            restitution_high=restitution_high,
-            max_velocity_low=max_velocity_low,
-            max_velocity_high=max_velocity_high,
-            lateral_friction_low=lateral_friction_low,
-            lateral_friction_high=lateral_friction_high,
-            camera_rate_fps_low=camera_rate_fps_low,
-            camera_rate_fps_high=camera_rate_fps_high)
+        env = wrappers.DomainRandomizationWrapper(env, **kwargs)
 
     env = wrappers.QuaternionToCornersWrapper(env, num_corners)
     env = wrappers.FlattenObservationWrapper(env)

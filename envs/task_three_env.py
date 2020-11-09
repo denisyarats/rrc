@@ -380,7 +380,7 @@ class TaskThreeEnv(gym.GoalEnv):
     def _create_observation(self, t, action):
         robot_observation = self.platform.get_robot_observation(t)
         camera_observation = self.platform.get_camera_observation(t)
-        
+
         observation = {
             "observation": {
                 "position": robot_observation.position,

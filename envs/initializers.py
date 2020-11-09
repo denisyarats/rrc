@@ -77,8 +77,8 @@ class CustomRandomInitializer:
             radius = move_cube._max_cube_com_distance_to_center * np.sqrt(
                 move_cube.random.random())
             theta = move_cube.random.uniform(0, 2 * np.pi)
-            x = 0 #radius * np.cos(theta)
-            y = 0 #radius * np.sin(theta)
+            x = 0  #radius * np.cos(theta)
+            y = 0  #radius * np.sin(theta)
             z = move_cube._CUBE_WIDTH / 2
             orientation = np.array([0, 0, 0, 1])
 

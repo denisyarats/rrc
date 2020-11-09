@@ -39,13 +39,13 @@ class OrientationMarker:
                                                basePosition=positions[i],
                                                baseOrientation=[0, 0, 0, 1])
             self.body_ids.append(body_id)
-            
+
     def compute_positions(self, position, orientation, magnitude):
         shifts = R.from_quat(orientation).apply(np.eye(3))
         shifts *= magnitude
         shifts += np.array(position)
         return shifts
-        
+
     def set_state(self, position, orientation):
         positions = self.compute_positions(position, orientation, self._length)
         for i, body_id in enumerate(self.body_ids):

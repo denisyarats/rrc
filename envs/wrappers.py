@@ -187,8 +187,9 @@ class DeltaPositionActionWrapper(gym.ActionWrapper):
                                            dtype=self.env.action_space.dtype)
 
     def action(self, action):
-        env_action = action + self.env.current_obs["position"]
-        env_action = np.clip(env_action, self.env.action_space.low, self.env.action_space.high)
+        env_action = action + self.env.current_obs['observation']['position']
+        env_action = np.clip(env_action, self.env.action_space.low,
+                             self.env.action_space.high)
         return env_action.astype(self.env.action_space.dtype)
 
 
@@ -226,41 +227,48 @@ class RandomizedTimeStepWrapper(gym.Wrapper):
 
 
 class DomainRandomizationWrapper(gym.Wrapper):
-    def __init__(self, env, obj_pos_noise_std, time_step_low, time_step_high,
-                 cube_mass_low, cube_mass_high, gravity_low, gravity_high,
-                 restitution_low, restitution_high, max_velocity_low,
-                 max_velocity_high, lateral_friction_low,
-                 lateral_friction_high, camera_rate_fps_low, camera_rate_fps_high):
+    def __init__(self, env, obj_pos_noise_std, time_step, time_step_range,
+                 cube_mass, cube_mass_range, gravity, gravity_range,
+                 restitution, restitution_range, max_velocity,
+                 max_velocity_range, lateral_friction, lateral_friction_range,
+                 camera_rate_fps, camera_rate_fps_range,
+                 random_robot_position):
 
         super().__init__(env)
 
         self.obj_pos_noise_std = obj_pos_noise_std
-        self.time_step_low = time_step_low
-        self.time_step_high = time_step_high
-        self.cube_mass_low = cube_mass_low
-        self.cube_mass_high = cube_mass_high
-        self.gravity_low = gravity_low
-        self.gravity_high = gravity_high
-        self.restitution_low = restitution_low
-        self.restitution_high = restitution_high
-        self.max_velocity_low = max_velocity_low
-        self.max_velocity_high = max_velocity_high
-        self.lateral_friction_low = lateral_friction_low
-        self.lateral_friction_high = lateral_friction_high
-        self.camera_rate_fps_low = camera_rate_fps_low
-        self.camera_rate_fps_high = camera_rate_fps_high
+        self.time_step = time_step
+        self.time_step_range = time_step_range
+        self.cube_mass = cube_mass
+        self.cube_mass_range = cube_mass_range
+        self.gravity = gravity
+        self.gravity_range = gravity_range
+        self.restitution = restitution
+        self.restitution_range = restitution_range
+        self.max_velocity = max_velocity
+        self.max_velocity_range = max_velocity_range
+        self.lateral_friction = lateral_friction
+        self.lateral_friction_range = lateral_friction_range
+        self.camera_rate_fps = camera_rate_fps
+        self.camera_rate_fps_range = camera_rate_fps_range
+        self.random_robot_position = random_robot_position
+
+    def compute(self, val, range):
+        noise = 0
+        if range > 0.0:
+            noise = np.random.uniform(-range, +range)
+        return val + noise
 
     def reset(self, **kwargs):
-        time_step = np.random.uniform(self.time_step_low, self.time_step_high)
-        cube_mass = np.random.uniform(self.cube_mass_low, self.cube_mass_high)
-        gravity = np.random.uniform(self.gravity_low, self.gravity_high)
-        restitution = np.random.uniform(self.restitution_low,
-                                        self.restitution_high)
-        max_velocity = np.random.uniform(self.max_velocity_low,
-                                         self.max_velocity_high)
-        lateral_friction = np.random.uniform(self.lateral_friction_low,
-                                             self.lateral_friction_high)
-        camera_rate_fps = np.random.uniform(self.camera_rate_fps_low, self.camera_rate_fps_high)
+        time_step = self.compute(self.time_step, self.time_step_range)
+        cube_mass = self.compute(self.cube_mass, self.cube_mass_range)
+        gravity = self.compute(self.gravity, self.gravity_range)
+        restitution = self.compute(self.restitution, self.restitution_range)
+        max_velocity = self.compute(self.max_velocity, self.max_velocity_range)
+        lateral_friction = self.compute(self.lateral_friction,
+                                        self.lateral_friction_range)
+        camera_rate_fps = self.compute(self.camera_rate_fps,
+                                       self.camera_rate_fps_range)
 
         obs = self.env.reset(time_step_s=time_step,
                              cube_mass=cube_mass,
@@ -269,10 +277,11 @@ class DomainRandomizationWrapper(gym.Wrapper):
                              max_velocity=max_velocity,
                              lateral_friction=lateral_friction,
                              camera_rate_fps=camera_rate_fps,
+                             random_robot_position=self.random_robot_position,
                              **kwargs)
-        
+
         return self.observation(obs)
-    
+
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
         obs = self.observation(obs)

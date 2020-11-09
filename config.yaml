@@ -3,29 +3,30 @@ use_old_simulator: false
 difficulty: 1
 env: task${difficulty}
 action_type: position # torque or both
-delta_pos: true # determines whether to use delta position actions
+delta_pos: false # determines whether to use delta position actions
 delta: 0.1
 action_repeat: 1
 episode_length: 500
 num_corners: 1
 action_scale: 1.0
 # domain randomization
-randomize: False
+randomize: true
 obj_pos_noise_std: 0.001
-time_step_low: 0.004
-time_step_high: 0.0040000001
-cube_mass_low: 0.91
-cube_mass_high: 0.99
-gravity_low: -9.82
-gravity_high: -9.80
-restitution_low: 0.78
-restitution_high: 0.82
-max_velocity_low: 9.5
-max_velocity_high: 10.5
-lateral_friction_low: 0.08
-lateral_friction_high: 0.12
-camera_rate_fps_low: 2
-camera_rate_fps_high: 5
+time_step: 0.004
+time_step_range: 0.0
+cube_mass: 0.2
+cube_mass_range: 0.0
+gravity: -9.81
+gravity_range: 0.0
+restitution: 0.8
+restitution_range: 0.0
+max_velocity: 10
+max_velocity_range: 0.0
+lateral_friction: 0.1
+lateral_friction_range: 0.0
+camera_rate_fps: 10
+camera_rate_fps_range: 0
+random_robot_position: true
 
 
 excluded_obses: null #desired_goal_orientation:achieved_goal_orientation
@@ -33,8 +34,8 @@ use_pretrained: false
 pretrained_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/phase1
 # teacher
 use_teacher: false
-teacher_model_dir: /private/home/denisy/workspace/research/rrc/exp/2020.11.05/120800_ddpg_task14_old_rew_rnd/0/model
-teacher_model_step: 4200000
+teacher_model_dir: /private/home/denisy/workspace/research/rrc/pretrained_agents/phase1 # /private/home/denisy/workspace/research/rrc/exp/2020.11.05/120800_ddpg_task14_old_rew_rnd/0/model
+teacher_model_step: 1 #4200000
 teacher_init_p: 1.0
 teacher_max_step: 3000000
 teacher_excluded_obses: action

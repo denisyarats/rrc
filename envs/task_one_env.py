@@ -171,7 +171,7 @@ class TaskOneEnv(gym.GoalEnv):
                                  bounds=(0, 0.001 * cube_radius),
                                  margin=cube_radius,
                                  sigmoid='long_tail')
-        
+
         return in_place
 
         above_ground = dmr.tolerance(
@@ -316,10 +316,19 @@ class TaskOneEnv(gym.GoalEnv):
         max_velocity = kwargs.get('max_velocity', 10)
         lateral_friction = kwargs.get('lateral_friction', 0.1)
         camera_rate_fps = kwargs.get('camera_rate_fps', 10)
+        random_robot_position = kwargs.get('random_robot_position', False)
+
+        if random_robot_position:
+            initial_robot_position = np.random.uniform(
+                trifingerpro_limits.robot_position.low,
+                trifingerpro_limits.robot_position.high)
+        else:
+            initial_robot_position = None
 
         self.platform = trifinger_simulation_v2.TriFingerPlatform(
             visualization=False,
             initial_object_pose=initial_object_pose,
+            initial_robot_position=initial_robot_position,
             time_step_s=time_step_s,
             cube_mass=cube_mass,
             gravity=gravity,
