@@ -57,7 +57,6 @@ class Workspace(object):
                              cfg.action_repeat,
                              cfg.episode_length,
                              cfg.num_corners,
-                             cfg.action_scale,
                              self.initializer,
                              cfg.seed,
                              randomize=cfg.randomize,
@@ -196,6 +195,7 @@ class Workspace(object):
             # sample action for data collection
             if not self.cfg.use_pretrained and self.step < self.cfg.num_seed_steps:
                 action_space = self.env.action_space
+                #import ipdb; ipdb.set_trace()
                 action = np.random.uniform(action_space.low.min(),
                                            action_space.high.max(),
                                            action_space.shape)

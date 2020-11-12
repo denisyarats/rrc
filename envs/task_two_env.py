@@ -179,7 +179,7 @@ class TaskTwoEnv(gym.GoalEnv):
             margin=0.999 * min_height,
             sigmoid='long_tail')
 
-        rewards = [above_ground, in_place]
+        rewards = [5 * above_ground, in_place]
         return np.mean(rewards)
 
     def step(self, action):
@@ -226,13 +226,13 @@ class TaskTwoEnv(gym.GoalEnv):
 
             observation = self._create_observation(t, action)
 
-            reward += self.compute_reward(observation, self.info)
 
             self.step_count = t
             # make sure to not exceed the episode length
             if self.step_count >= self.episode_length:
                 break
 
+        reward += self.compute_reward(observation, self.info)
         is_done = self.step_count >= self.episode_length
 
         if self.enable_visual_objects:

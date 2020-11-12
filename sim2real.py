@@ -277,7 +277,7 @@ def make_policy(env, path, n_policies):
         float(env.action_space.high.max())
     ]
     
-    excluded_obses = None #:desired_goal_orientation:achieved_goal_orientation'
+    excluded_obses = 'action:desired_goal_orientation:achieved_goal_orientation'
 
     policy = Policy(obs_shape=env.observation_space.shape,
                     obs_slices=env.obs_slices,
@@ -292,11 +292,11 @@ def make_policy(env, path, n_policies):
 def make_env(difficulty, init, goal, obs_wrappers=True, act_wrappers=True):
     
     initializer = initializers.FixedInitializer(difficulty, init, goal)
-    env = task_one_env.TaskOneEnv(initializer, ActionType.POSITION, frameskip=1, episode_length=5000)
+    env = task_one_env.TaskOneEnv(initializer, ActionType.POSITION, frameskip=100, episode_length=100)
 
     #env = wrappers.CubeMarkerWrapper(env)
     if obs_wrappers:
-        env = QuaternionToCornersWrapper(env, 1)
+        env = QuaternionToCornersWrapper(env, 0)
         env = FlattenObservationWrapper(env)
     if act_wrappers:
         env = ActionScalingWrapper(env, low=-1.0, high=+1.0)

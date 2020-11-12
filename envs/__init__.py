@@ -24,8 +24,7 @@ def make_initializer(name, difficulty, init_p=None, max_step=None):
 
 
 def make(env_name, action_type, action_repeat, episode_length, num_corners,
-         action_scale, initializer, seed, randomize, delta_pos, delta,
-         **kwargs):
+         initializer, seed, randomize, delta_pos, delta, **kwargs):
     assert action_type in ['position', 'torque', 'both']
 
     if action_type == 'position':
@@ -52,11 +51,9 @@ def make(env_name, action_type, action_repeat, episode_length, num_corners,
     env = wrappers.FlattenObservationWrapper(env)
     if delta_pos:
         env = wrappers.DeltaPositionActionWrapper(env, delta)
-    env = wrappers.ActionScalingWrapper(env,
-                                        alpha=action_scale,
-                                        low=-1.0,
-                                        high=+1.0)
-
+        
+    env = wrappers.ActionScalingWrapper(env, alpha=1.0, low=-1.0, high=+1.0)
+    
     action_space = env.action_space
     assert np.all(action_space.low >= -1.0)
     assert np.all(action_space.high <= +1.0)

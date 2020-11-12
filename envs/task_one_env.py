@@ -244,12 +244,14 @@ class TaskOneEnv(gym.GoalEnv):
 
             observation = self._create_observation(t, action)
 
-            reward += self.compute_reward(observation, self.info)
+            
 
             self.step_count = t
             # make sure to not exceed the episode length
             if self.step_count >= self.episode_length:
                 break
+                
+        reward += self.compute_reward(observation, self.info)
 
         is_done = self.step_count >= self.episode_length
 

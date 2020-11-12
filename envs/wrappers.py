@@ -82,6 +82,31 @@ class QuaternionToCornersWrapper(gym.ObservationWrapper):
         obs['desired_goal']['orientation'] = desired_corners.flatten()
 
         return obs
+    
+
+class ObjectPositionDiffWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        self.observation_space = deepcopy(self.env.observation_space)
+        
+        self.observation_space.spaces['object_position_diff'] = gym.spaces.Box(low=-1e9,
+                                            high=1e9,
+                                            shape=(3,),
+                                            dtype=np.float32)
+
+    def observation(self, obs):
+        achieved_pose = move_cube.Pose.from_dict(obs['achieved_goal'])
+        desired_pose = move_cube.Pose.from_dict(obs['desired_goal'])
+
+
+        obs = deepcopy(obs)
+        obs['object_position_diff'] = desired_pose.position - achieved_pose.position
+
+
+        return obs
+    
+    
 
 
 class QuaternionToEulerWrapper(gym.ObservationWrapper):
@@ -269,7 +294,7 @@ class DomainRandomizationWrapper(gym.Wrapper):
                                         self.lateral_friction_range)
         camera_rate_fps = self.compute(self.camera_rate_fps,
                                        self.camera_rate_fps_range)
-
+        '''
         obs = self.env.reset(time_step_s=time_step,
                              cube_mass=cube_mass,
                              gravity=gravity,
@@ -279,6 +304,8 @@ class DomainRandomizationWrapper(gym.Wrapper):
                              camera_rate_fps=camera_rate_fps,
                              random_robot_position=self.random_robot_position,
                              **kwargs)
+        '''
+        obs = self.env.reset(cube_mass=cube_mass, **kwargs)
 
         return self.observation(obs)
 
