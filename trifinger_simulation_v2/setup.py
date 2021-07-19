@@ -6,12 +6,15 @@ d = generate_distutils_setup(
         "trifinger_simulation_v2",
         "trifinger_simulation_v2.gym_wrapper",
         "trifinger_simulation_v2.gym_wrapper.envs",
+        "trifinger_simulation_v2.tasks",
     ],
     package_dir={"": "python"},
     package_data={
         "": [
             "robot_properties_fingers/meshes/stl/*",
+            "robot_properties_fingers/meshes/stl/pro/*",
             "robot_properties_fingers/urdf/*",
+            "robot_properties_fingers/urdf/pro/*",
         ]
     },
     scripts=[

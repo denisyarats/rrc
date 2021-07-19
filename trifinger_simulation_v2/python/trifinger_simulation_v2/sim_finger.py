@@ -668,6 +668,7 @@ class SimFinger:
         finger_base_orientation = pybullet.getQuaternionFromEuler(
             [0, 0, 0], physicsClientId=self._pybullet_client_id
         )
+        print(f"finger urdf path: {self.finger_urdf_path}")
 
         self.finger_id = pybullet.loadURDF(
             fileName=self.finger_urdf_path,

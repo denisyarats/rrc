@@ -18,7 +18,7 @@ from replay_buffer import ReplayBuffer
 from video import VideoRecorder, TrainVideoRecorder
 from collections import defaultdict
 
-from rrc_simulation.tasks import move_cube
+#from rrc_simulation.tasks import move_cube
 
 torch.backends.cudnn.benchmark = True
 
